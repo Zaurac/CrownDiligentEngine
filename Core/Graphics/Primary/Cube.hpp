@@ -44,6 +44,7 @@ private:
 	RefCntAutoPtr<IBuffer> m_VSConstants;
 	RefCntAutoPtr<IBuffer> m_CubeVertexBuffer;
 	RefCntAutoPtr<IBuffer>  m_CubeIndexBuffer;
+	RefCntAutoPtr<IBuffer> m_CubeInstanceBuffer;
 
 	RefCntAutoPtr<IEngineFactory> m_pEngineFactory;
 	RefCntAutoPtr<IRenderDevice> m_pDevice;
@@ -54,6 +55,8 @@ private:
 	std::vector<Uint32> m_indices;
 
 	float4x4 m_ModelMatrix;
+
+	int nbrInstances = 20;
 
 public:
 	Cube(ISwapChain* pSwapChain,IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext);

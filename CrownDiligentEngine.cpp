@@ -28,7 +28,7 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 	//View = float4x4::Translation(pos);
 
 	// Apply rotation
-	float4x4 CubeModelTransform = float4x4::RotationY(static_cast<float>(CurrTime) * 1.0f) * float4x4::RotationX(-PI_F * 0.1f);
+	float4x4 CubeModelTransform = float4x4::RotationY(static_cast<float>(CurrTime) * 0.0f) * float4x4::RotationX(-PI_F * 0.0f);
 
 	
 

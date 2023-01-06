@@ -10,6 +10,11 @@ struct VSInput
 {
     float3 Pos : ATTRIB0;
     float2 UV : ATTRIB1;
+    
+    float4 MtrxRow0 : ATTRIB2;
+    float4 MtrxRow1 : ATTRIB3;
+    float4 MtrxRow2 : ATTRIB4;
+    float4 MtrxRow3 : ATTRIB5;
 };
 
 struct PSInput
@@ -24,6 +29,15 @@ struct PSInput
 void main(in VSInput VSIn,
           out PSInput PSIn)
 {
-    PSIn.Pos = mul(float4(VSIn.Pos, 1.0), g_WorldViewProj);
+    float4x4 InstanceMatr = MatrixFromRows(VSIn.MtrxRow0, VSIn.MtrxRow1, VSIn.MtrxRow2, VSIn.MtrxRow3);
+    
+    float4 TransformedPos = float4(VSIn.Pos, 1.0);
+    
+    TransformedPos = mul(TransformedPos,InstanceMatr);
+    
+    PSIn.Pos = mul(TransformedPos, g_WorldViewProj);
     PSIn.UV = VSIn.UV;
+    
+    //PSIn.Pos = mul(float4(VSIn.Pos, 1.0), g_WorldViewProj);
+    //PSIn.UV = VSIn.UV;
 }
