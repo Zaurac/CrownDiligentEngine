@@ -1,5 +1,6 @@
 #include "Cube.hpp"
-
+#include <random>
+#include <string>
 
 Cube::Cube(ISwapChain* pSwapChain, IRenderDevice* pRenderDevice, IEngineFactory *pEngineFactory, IDeviceContext* pDeviceContext)
 	: m_pSwapChain(pSwapChain), m_pDevice(pRenderDevice), m_pEngineFactory(pEngineFactory), m_pDeviceContext(pDeviceContext)
@@ -151,15 +152,20 @@ void Cube::CreatePipeline()
 	InstBuffDesc.Name = "Instance Buffer CUBE";
 	InstBuffDesc.Usage = USAGE_DEFAULT;
 	InstBuffDesc.BindFlags = BIND_VERTEX_BUFFER;
-	InstBuffDesc.Size = sizeof(float4x4) * nbrInstances;
+	InstBuffDesc.Size = sizeof(InstanceData) * nbrInstances;
 	m_pDevice->CreateBuffer(InstBuffDesc, nullptr, &m_CubeInstanceBuffer);
 
-	std::vector<float4x4> InstanceData(nbrInstances);
+	std::mt19937 gen; // Standard mersenne_twister_engine. Use default seed
+					// to generate consistent distribution.
+	std::uniform_int_distribution<Int32>  tex_distr(0, numTextures - 1);
+	std::vector<InstanceData> InstanceData(nbrInstances);
 	float offsetX = 0;
+	int   instId = 0;
 	for (auto j = 0 ; j < InstanceData.size(); j++)
 	{
-		InstanceData[j] = float4x4::Translation(offsetX, 0, 5);
+		InstanceData[j].Matrix = float4x4::Translation(offsetX, 0, 5);
 		offsetX += 2.1;
+		InstanceData[j].TextureInd = static_cast<float>(tex_distr(gen));
 	}
 	Uint32 DataSize = static_cast<Uint32>(sizeof(InstanceData[0]) * InstanceData.size());
 	m_pDeviceContext->UpdateBuffer(m_CubeInstanceBuffer, 0, DataSize, InstanceData.data(), RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
@@ -255,7 +261,10 @@ void Cube::CreatePipeline()
 		// Attribute 4 - third row
 		LayoutElement{4, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
 		// Attribute 5 - fourth row
-		LayoutElement{5, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE}
+		LayoutElement{5, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
+
+		// Attribute 6 - texture array index
+		 LayoutElement{6, 1, 1, VT_FLOAT32, False, LAYOUT_ELEMENT_AUTO_OFFSET, LAYOUT_ELEMENT_AUTO_STRIDE, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE}
 	};
 	PSOCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
 	PSOCreateInfo.GraphicsPipeline.InputLayout.NumElements = _countof(LayoutElems);
@@ -298,11 +307,49 @@ void Cube::CreatePipeline()
 
 void Cube::LoadTexture()
 {
-	TextureLoadInfo loadInfo;
+	/*TextureLoadInfo loadInfo;
 	loadInfo.IsSRGB = true;
 	RefCntAutoPtr<ITexture> Tex;
 	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/DGLogo.png", loadInfo, m_pDevice, &Tex);
 	m_TextureSRV = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+	m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_TextureSRV);*/
+
+	RefCntAutoPtr<ITexture> pTexArray;
+	for (int tex = 0; tex < numTextures; tex++)
+	{
+		// Load current texture
+		std::stringstream FileNameSS;
+		FileNameSS << "F:/CustomEngine/CrownDiligentEngine/assets/DGLogo" << tex << ".png";
+		const auto FileName = FileNameSS.str();
+		RefCntAutoPtr<ITexture> SrcTex;
+		TextureLoadInfo loadInfo;
+		loadInfo.IsSRGB = true;
+		CreateTextureFromFile(FileName.c_str(), loadInfo, m_pDevice, &SrcTex);
+		const auto& TexDesc = SrcTex->GetDesc();
+		if (pTexArray == nullptr)
+		{
+			//	Create texture array
+			auto TexArrDesc = TexDesc;
+			TexArrDesc.ArraySize = numTextures;
+			TexArrDesc.Type = RESOURCE_DIM_TEX_2D_ARRAY;
+			TexArrDesc.Usage = USAGE_DEFAULT;
+			TexArrDesc.BindFlags = BIND_SHADER_RESOURCE;
+			m_pDevice->CreateTexture(TexArrDesc, nullptr, &pTexArray);
+		}
+
+		// Copy current texture into the texture array
+		for (Uint32 mip = 0; mip < TexDesc.MipLevels; ++mip)
+		{
+			CopyTextureAttribs CopyAttribs(SrcTex, RESOURCE_STATE_TRANSITION_MODE_TRANSITION,
+				pTexArray, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+			CopyAttribs.SrcMipLevel = mip;
+			CopyAttribs.DstMipLevel = mip;
+			CopyAttribs.DstSlice = tex;
+			m_pDeviceContext->CopyTexture(CopyAttribs);
+		}
+	}
+	m_TextureSRV = pTexArray->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
 	m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_TextureSRV);
 }
 

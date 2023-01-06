@@ -37,6 +37,11 @@ private:
 		float3 pos;
 		float2 UV;
 	};
+	struct InstanceData
+	{
+		float4x4 Matrix;
+		float    TextureInd = 0;
+	};
 
 	RefCntAutoPtr<IPipelineState> m_pPSO;
 	RefCntAutoPtr<IShaderResourceBinding> m_pSRB;
@@ -57,6 +62,7 @@ private:
 	float4x4 m_ModelMatrix;
 
 	int nbrInstances = 20;
+	int numTextures = 4;
 
 public:
 	Cube(ISwapChain* pSwapChain,IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext);
