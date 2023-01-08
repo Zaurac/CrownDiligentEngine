@@ -7,14 +7,12 @@ CrownDiligentEngine::CrownDiligentEngine()
 
 void CrownDiligentEngine::Initialize()
 {
-	
-	
-	//manager.SetDisplaySize(m_pSwapChain->GetDesc().Width, m_pSwapChain->GetDesc().Height);
 
 	m_pCube = new Cube(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
+	m_model = new ObjModel(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
 	//m_pCube = std::make_unique<Cube>(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
 
-	//pos = float3(0,0,5);
+	m_model->loadObjFile("F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/sponza.obj");
 	m_CameraPos = float3(0, 0, 5);
 }
 
@@ -36,12 +34,12 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 	auto SrfPreTransform = GetSurfacePretransformMatrix(float3{ 0, 0, 1 });
 
 	// Get projection matrix adjusted to the current screen orientation
-	auto Proj = GetAdjustedProjectionMatrix(PI_F / 4.0f, 0.1f, 1000.f);
+	auto Proj = GetAdjustedProjectionMatrix(PI_F / 4.0f, 0.1f, 10000.f);
 
 	// Compute world-view-projection matrix
 	m_WorldViewProjMatrix = CubeModelTransform * m_ViewMatrix * SrfPreTransform * Proj;
 	m_pCube->Update(ElapsedTime, m_WorldViewProjMatrix);
-
+	m_model->update(ElapsedTime, m_WorldViewProjMatrix);
 	
 }
 
@@ -49,14 +47,18 @@ void CrownDiligentEngine::Render()
 {
 	
 	// Clear the back buffer
-	const float ClearColor[] = { 0.350f, 0.350f, 0.350f, 1.0f };
+	//const float ClearColor[] = { 0.350f, 0.350f, 0.350f, 1.0f };
+	const float ClearColor[] = { 0.133f, 0.185f, 0.255f, 0.8f };
 	// Let the engine perform required state transitions
 	auto* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
 	auto* pDSV = m_pSwapChain->GetDepthBufferDSV();
 	m_pImmediateContext->ClearRenderTarget(pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 	m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
+
+	m_model->draw();
 	m_pCube->Draw();
+	
 
 	
 }
@@ -66,6 +68,7 @@ void CrownDiligentEngine::ShutDown()
 	m_pCube->ShutDown();
 	//m_pCube.release();
 	delete(m_pCube);
+	delete(m_model);
 }
 
 void CrownDiligentEngine::UpdateCamera(float ElapsedTime)

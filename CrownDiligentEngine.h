@@ -1,14 +1,9 @@
 #include "GLFWSample.h"
 #include "DiligentCore/Common/interface/BasicMath.hpp"
 #include "Core/Graphics/Primary/Cube.hpp"
+#include "Core/Graphics/ObjModel.hpp"
 
 using namespace Diligent;
-
-struct Vertex
-{
-	float3 pos;
-	float4 color;
-};
 
 	class CrownDiligentEngine : public GLFWSample
 	{
@@ -35,6 +30,7 @@ struct Vertex
 	private:
 		//std::unique_ptr<Cube> m_pCube;
 		Cube * m_pCube = NULL;
+		ObjModel *m_model = NULL;
 
 		float4x4 m_WorldViewProjMatrix;
 		//float4x4 View;
@@ -50,7 +46,7 @@ struct Vertex
 		
 		float3 m_CameraPos;
 		float4x4 m_ViewMatrix;
-		float    m_fMoveSpeed = 10.f;
+		float    m_fMoveSpeed = 100.f;
 		float    m_fCurrentSpeed = 0.f;
 
 	};
