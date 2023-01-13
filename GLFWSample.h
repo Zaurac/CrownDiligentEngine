@@ -79,8 +79,6 @@
 //CUSTOM
 #include "Core/Profiler.hpp"
 
-
-
 using namespace Diligent;
 
 RefCntAutoPtr<IEngineFactory> m_pEngineFactory;
@@ -239,6 +237,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 	glfwSetWindowSizeLimits(m_Window, 320, 240, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 	glfwMakeContextCurrent(m_Window);
+	glfwSwapInterval(0);
 
 #if PLATFORM_WIN32
 	Win32NativeWindow Window{ glfwGetWin32Window(m_Window) };
@@ -276,11 +275,11 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 #    endif
 		auto* pFactoryD3D11 = GetEngineFactoryD3D11();
 		m_pEngineFactory = pFactoryD3D11;
+		
 
 		EngineD3D11CreateInfo EngineCI;
 		pFactoryD3D11->CreateDeviceAndContextsD3D11(EngineCI, &m_pDevice, &m_pImmediateContext);
 		pFactoryD3D11->CreateSwapChainD3D11(m_pDevice, m_pImmediateContext, SCDesc, FullScreenModeDesc{}, Window, &m_pSwapChain);
-
 		m_pImGui.reset(new ImGuiImplWin32((HWND)Window.hWnd, m_pDevice, SCDesc.ColorBufferFormat, SCDesc.DepthBufferFormat));
 
 	}
@@ -403,14 +402,17 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		auto ElapsedTime = CurrTime - PrevTime;
 		PrevTime = CurrTime;
 
+		
+
 		const auto& SCDesc = m_pSwapChain->GetDesc();
 		m_pImGui->NewFrame(SCDesc.Width, SCDesc.Height, SCDesc.PreTransform);
 
+		m_Profiler.Update(ElapsedTime);
+		m_Profiler.UpdateUI();
 
 		app->Update(CurrTime, ElapsedTime);
 
-		m_Profiler.Update(ElapsedTime);
-		m_Profiler.UpdateUI();
+		
 
 		auto* pContext = GetContext();
 		auto* pSwapchain = GetSwapChain();
@@ -435,7 +437,6 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 		pContext->SetRenderTargets(1, &pRTV, pDSV, Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-
 		if (m_pImGui)
 		{
 			//No need to call EndFrame as ImGui::Render calls it automatically
@@ -452,7 +453,9 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		fpsCounterSS << "" << " - " << std::fixed << std::setprecision(1) << filteredFrameTime * 1000;
 		fpsCounterSS << " ms (" << 1.0 / filteredFrameTime << " fps)";
 
-		pSwapchain->Present();
+		std::cout << fpsCounterSS.str() << std::endl;
+
+		pSwapchain->Present(0);
 	}
 
 	//m_pImGui->EndFrame();

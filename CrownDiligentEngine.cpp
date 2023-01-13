@@ -1,6 +1,7 @@
 #include "CrownDiligentEngine.h"
 #include "DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
 
+
 CrownDiligentEngine::CrownDiligentEngine()
 {
 }
@@ -28,8 +29,6 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 	// Apply rotation
 	float4x4 CubeModelTransform = float4x4::RotationY(static_cast<float>(CurrTime) * 0.0f) * float4x4::RotationX(-PI_F * 0.0f);
 
-	
-
 	// Get pretransform matrix that rotates the scene according the surface orientation
 	auto SrfPreTransform = GetSurfacePretransformMatrix(float3{ 0, 0, 1 });
 
@@ -40,27 +39,23 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 	m_WorldViewProjMatrix = CubeModelTransform * m_ViewMatrix * SrfPreTransform * Proj;
 	m_pCube->Update(ElapsedTime, m_WorldViewProjMatrix);
 	m_model->update(ElapsedTime, m_WorldViewProjMatrix);
-	
 }
 
 void CrownDiligentEngine::Render()
 {
-	
 	// Clear the back buffer
 	//const float ClearColor[] = { 0.350f, 0.350f, 0.350f, 1.0f };
 	const float ClearColor[] = { 0.133f, 0.185f, 0.255f, 0.8f };
 	// Let the engine perform required state transitions
 	auto* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
 	auto* pDSV = m_pSwapChain->GetDepthBufferDSV();
+	m_pImmediateContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 	m_pImmediateContext->ClearRenderTarget(pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 	m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-
-	m_model->draw();
+	ViewFrustumExt Frutstum;
+	m_model->draw(false, Frutstum);
 	m_pCube->Draw();
-	
-
-	
 }
 
 void CrownDiligentEngine::ShutDown()

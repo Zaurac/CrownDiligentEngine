@@ -39,7 +39,7 @@
 namespace Diligent
 {
 
-#include "Shaders/Common/public/BasicStructures.fxh"
+#include "assets/BasicStructures.fxh"
 
 class ShadowMapManager
 {

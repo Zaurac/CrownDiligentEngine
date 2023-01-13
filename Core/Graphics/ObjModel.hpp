@@ -19,6 +19,7 @@
 #include "../../../DiligentTools/TextureLoader/interface/TextureUtilities.h"
 
 #include "../../DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
+#include "../../DiligentCore/Common/interface/AdvancedMath.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
 #include "../../DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
@@ -30,6 +31,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 
 using namespace Diligent;
+
 
 class ObjModel
 {
@@ -53,9 +55,10 @@ public:
 	void CreatePipeline();
 	void CreateShader();
 	void update(float eplapsedTime, float4x4 matrix);
-	void draw();
+	void draw(bool bIsShadowPass, const ViewFrustumExt& Frustum);
 
 private:
+	
 	
 
 	RefCntAutoPtr<IShader> pVS;
@@ -65,5 +68,8 @@ private:
 	RefCntAutoPtr<IRenderDevice> m_pDevice;
 	RefCntAutoPtr<ISwapChain> m_pSwapChain;
 	RefCntAutoPtr<IDeviceContext> m_pDeviceContext;
+
+	RefCntAutoPtr<IPipelineState> m_pModelPipeline;
+	RefCntAutoPtr<IBuffer> m_pUniformBuffer;
 };
 

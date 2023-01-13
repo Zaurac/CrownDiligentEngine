@@ -19,6 +19,7 @@
 #include "../../../DiligentTools/TextureLoader/interface/TextureUtilities.h"
 
 #include "../../DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
+#include "../../DiligentCore/Common/interface/AdvancedMath.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
 #include "../../DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
@@ -48,9 +49,9 @@ public:
 	RefCntAutoPtr<IShaderResourceBinding> m_pSRB;
 
 	void SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateContext);
-	void CreatePipeline(GraphicsPipelineStateCreateInfo pipelinecreateInfo);
+	void CreatePipeline(IPipelineState* pipeline);
 	void Update(float4x4 matrix);
-	void Draw(IDeviceContext* immediateContext);
+	void Draw(IDeviceContext* immediateContext, bool bIsShadowPass, const ViewFrustumExt& Frustum);
 
 public:
 	Mesh();

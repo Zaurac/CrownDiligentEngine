@@ -47,12 +47,12 @@ void Mesh::SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateCont
 	m_ImmediateContext = immediateContext;
 }
 
-void Mesh::CreatePipeline(GraphicsPipelineStateCreateInfo pipelinecreateInfo)
+void Mesh::CreatePipeline(IPipelineState * pipeline)
 {
 	CreateBuffer();
 
-	m_pRenderDevice->CreateGraphicsPipelineState(pipelinecreateInfo, &m_pipeline);
-	m_pipeline->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_UniformBuffer);
+	m_pipeline = pipeline;
+
 	m_pipeline->CreateShaderResourceBinding(&m_pSRB, true);
 
 	if (!m_diffuseTextureView)
@@ -77,12 +77,9 @@ void Mesh::Update(float4x4 matrix)
 	m_ModelMatrix = matrix;
 }
 
-void Mesh::Draw(IDeviceContext* immediateContext)
+void Mesh::Draw(IDeviceContext* immediateContext,bool bIsShadowPass, const ViewFrustumExt& Frustum)
 {
-	{
-		MapHelper<float4x4> CBConstant(immediateContext, m_UniformBuffer, MAP_WRITE, MAP_FLAG_DISCARD);
-		*CBConstant = m_ModelMatrix.Transpose();
-	}
+	
 
 	Uint64 offset[] = { 0 };
 	IBuffer* pBuffs[] = { m_VerticesBuffer };

@@ -1,7 +1,9 @@
 #include "GLFWSample.h"
+#include "DiligentCore/Common/interface/AdvancedMath.hpp"
 #include "DiligentCore/Common/interface/BasicMath.hpp"
 #include "Core/Graphics/Primary/Cube.hpp"
 #include "Core/Graphics/ObjModel.hpp"
+
 
 using namespace Diligent;
 
@@ -27,6 +29,8 @@ using namespace Diligent;
 
 
 		float4x4 GetReferenceRotiation() const;
+
+		
 	private:
 		//std::unique_ptr<Cube> m_pCube;
 		Cube * m_pCube = NULL;
@@ -34,7 +38,6 @@ using namespace Diligent;
 
 		float4x4 m_WorldViewProjMatrix;
 		//float4x4 View;
-
 
 		//Camera
 		float3 m_ReferenceRightAxis = float3{ 1, 0, 0 };

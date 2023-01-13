@@ -2,6 +2,9 @@
 
 #include <unordered_map>
 
+#include <direct.h>
+#define GetCurrentDir _getcwd
+
 ObjModel::ObjModel(ISwapChain* pSwapChain, IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext)
 	: m_pSwapChain(pSwapChain), m_pDevice(pRenderDevice), m_pEngineFactory(pEngineFactory), m_pDeviceContext(pDeviceContext)
 {
@@ -10,6 +13,15 @@ ObjModel::ObjModel(ISwapChain* pSwapChain, IRenderDevice* pRenderDevice, IEngine
 void ObjModel::CreatePipeline()
 {
 	CreateShader();
+
+	//UNIFORM BUFFER
+	BufferDesc CBDesc;
+	CBDesc.Name = "VS Constant CB";
+	CBDesc.Size = sizeof(float4x4);
+	CBDesc.Usage = USAGE_DYNAMIC;
+	CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
+	CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+	m_pDevice->CreateBuffer(CBDesc, nullptr, &m_pUniformBuffer);
 
 	GraphicsPipelineStateCreateInfo PSOCreateInfo;
 	PSOCreateInfo.PSODesc.Name = "Model Pipeline";
@@ -47,7 +59,7 @@ void ObjModel::CreatePipeline()
 
 	ShaderResourceVariableDesc Vars[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture",SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
+		{SHADER_TYPE_PIXEL, "g_Texture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.Variables = Vars;
@@ -67,19 +79,17 @@ void ObjModel::CreatePipeline()
 	PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
 	
+
+	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pModelPipeline);
+	m_pModelPipeline->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pUniformBuffer);
+
 	for (auto i = 0; i < m_meshes.size(); i++)
 	{
 		m_meshes[i].SetSystem(m_pDevice, m_pDeviceContext);
-		m_meshes[i].CreatePipeline(PSOCreateInfo);
+		m_meshes[i].CreatePipeline(m_pModelPipeline);
 	}
 
-
-	///*TextureLoadInfo loadInfo;
-	//loadInfo.IsSRGB = true;
-	//RefCntAutoPtr<ITexture> Tex;
-	//CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/DGLogo.png", loadInfo, m_pDevice, &Tex);
-	//m_TextureSRV = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-	//m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_TextureSRV);
+	
 }
 
 void ObjModel::CreateShader()
@@ -96,11 +106,10 @@ void ObjModel::CreateShader()
 	m_pEngineFactory->CreateDefaultShaderSourceStreamFactory("F:/CustomEngine/CrownDiligentEngine/assets/", &pShaderSourceFactory);
 	ShaderCI.pShaderSourceStreamFactory = pShaderSourceFactory;
 
-	
-
 	//VERTEX SHADER
 	ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
 	ShaderCI.EntryPoint = "main";
+	//SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE;
 	ShaderCI.Desc.Name = "Model vertex shader";
 	ShaderCI.FilePath = "model.vsh";
 	m_pDevice->CreateShader(ShaderCI, &pVS);
@@ -123,11 +132,16 @@ void ObjModel::update(float eplapsedTime, float4x4 matrix)
 	}
 }
 
-void ObjModel::draw()
+void ObjModel::draw(bool bIsShadowPass, const ViewFrustumExt& Frustum)
 {
+	{
+		MapHelper<float4x4> CBConstant(m_pDeviceContext, m_pUniformBuffer, MAP_WRITE, MAP_FLAG_DISCARD);
+		*CBConstant = m_ModelMatrix.Transpose();
+	}
+
 	for (auto j =0; j < m_meshes.size(); ++j)
 	{
-		m_meshes[j].Draw(m_pDeviceContext);
+		m_meshes[j].Draw(m_pDeviceContext, bIsShadowPass, Frustum);
 	}
 }
 
@@ -141,6 +155,7 @@ void ObjModel::loadObjFile(const std::string& path)
 	std::string warning;
 	std::string error;
 
+	
 
 	 bool ret = tinyobj::LoadObj(&attributes, &shapes, &materials, &warning, &error, path.c_str(), "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/");
 	
@@ -168,7 +183,7 @@ void ObjModel::loadObjFile(const std::string& path)
 	}*/
 
 	
-	
+	std::unordered_map<const char*, RefCntAutoPtr<ITextureView>> m_textureArray;
 	for (auto i = 0; i < shapes.size(); i++)
 	{
 		Mesh meshe;
@@ -194,6 +209,7 @@ void ObjModel::loadObjFile(const std::string& path)
 				uv.y = 1.0f - attributes.texcoords[2 * index.texcoord_index + 1];
 			}
 
+			
 
 			if (uniqueVertices.count(position) == 0)
 			{
@@ -211,20 +227,27 @@ void ObjModel::loadObjFile(const std::string& path)
 			tinyobj::material_t* mp = &materials[shapes[i].mesh.material_ids[0]];
 			if (mp->diffuse_texname.length() >= 1)
 			{
-				TextureLoadInfo loadInfo;
-				loadInfo.IsSRGB = true;
-				RefCntAutoPtr<ITexture> Tex;
-				std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->diffuse_texname;
-				CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
-				meshe.m_diffuseTextureView = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+				auto t = m_textureArray.find("");
+				if (m_textureArray[mp->diffuse_texname.c_str()])
+				{
+					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
+				}
+				else
+				{
+					TextureLoadInfo loadInfo;
+					loadInfo.IsSRGB = true;
+					RefCntAutoPtr<ITexture> Tex;
+					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->diffuse_texname;
+					CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
+					m_textureArray[mp->diffuse_texname.c_str()] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
+				}
+				
 			}
 		}
 		
 		m_meshes.push_back(meshe);
 		uniqueVertices.clear();
 	}
-
-	
-	
 	CreatePipeline();
 }

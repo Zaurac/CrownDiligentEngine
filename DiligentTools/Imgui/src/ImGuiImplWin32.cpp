@@ -59,6 +59,7 @@ ImGuiImplWin32::~ImGuiImplWin32()
 void ImGuiImplWin32::NewFrame(Uint32 RenderSurfaceWidth, Uint32 RenderSurfaceHeight, SURFACE_TRANSFORM SurfacePreTransform)
 {
     VERIFY(SurfacePreTransform == SURFACE_TRANSFORM_IDENTITY, "Unexpected surface pre-transform");
+
     ImGui_ImplWin32_NewFrame();
     ImGuiImplDiligent::NewFrame(RenderSurfaceWidth, RenderSurfaceHeight, SurfacePreTransform);
 
