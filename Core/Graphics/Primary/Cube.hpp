@@ -62,7 +62,7 @@ private:
 	float4x4 m_ModelMatrix;
 
 	int nbrInstances = 20;
-	int numTextures = 4;
+	int numTextures = 3;
 
 public:
 	Cube(ISwapChain* pSwapChain,IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext);

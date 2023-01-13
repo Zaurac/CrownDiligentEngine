@@ -16,5 +16,8 @@ struct PSOutput
 void main(in PSInput PSIn,
           out PSOutput PSOut)
 {
-    PSOut.Color = g_Texture.Sample(g_Texture_sampler, float3(PSIn.UV, PSIn.TexIndex));
+    
+    float4 texColor = g_Texture.Sample(g_Texture_sampler, float3(PSIn.UV, PSIn.TexIndex));
+    clip(texColor.a - 0.5);
+    PSOut.Color = texColor;
 }

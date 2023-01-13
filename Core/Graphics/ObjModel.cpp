@@ -31,6 +31,9 @@ void ObjModel::CreatePipeline()
 	//TYPE PIPELINE
 	PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
 
+	BlendStateDesc blendDesc;
+	blendDesc.RenderTargets[0].BlendEnable = false;
+
 	// clang-format off
 	// This tutorial will render to a single render target
 	PSOCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
@@ -44,6 +47,8 @@ void ObjModel::CreatePipeline()
 	PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
 	// clang-format on
 	PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+	//BLEND Desc
+	PSOCreateInfo.GraphicsPipeline.BlendDesc = blendDesc;
 
 	LayoutElement LayoutElems[] =
 	{
@@ -59,7 +64,8 @@ void ObjModel::CreatePipeline()
 
 	ShaderResourceVariableDesc Vars[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
+		{SHADER_TYPE_PIXEL, "g_Texture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC},
+		{SHADER_TYPE_PIXEL, "g_AlphaTexture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.Variables = Vars;
@@ -67,18 +73,18 @@ void ObjModel::CreatePipeline()
 
 	SamplerDesc SamLinearDesc
 	{
-		 FILTER_TYPE_ANISOTROPIC, FILTER_TYPE_ANISOTROPIC, FILTER_TYPE_ANISOTROPIC,
+		 FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
 		TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP
 	};
 
 	ImmutableSamplerDesc ImtblSamplers[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture", SamLinearDesc}
+		{SHADER_TYPE_PIXEL, "g_Texture", SamLinearDesc},
+		{SHADER_TYPE_PIXEL, "g_AlphaTexture", SamLinearDesc}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
-	
 
 	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pModelPipeline);
 	m_pModelPipeline->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pUniformBuffer);
@@ -88,8 +94,6 @@ void ObjModel::CreatePipeline()
 		m_meshes[i].SetSystem(m_pDevice, m_pDeviceContext);
 		m_meshes[i].CreatePipeline(m_pModelPipeline);
 	}
-
-	
 }
 
 void ObjModel::CreateShader()
@@ -225,6 +229,26 @@ void ObjModel::loadObjFile(const std::string& path)
 		if (shapes[i].mesh.material_ids[0] >= 0)
 		{
 			tinyobj::material_t* mp = &materials[shapes[i].mesh.material_ids[0]];
+			if (mp->alpha_texname.length() >= 1)
+			{
+				auto t = m_textureArray.find("");
+				if (m_textureArray[mp->alpha_texname.c_str()])
+				{
+					meshe.m_alphaTextureView = m_textureArray[mp->alpha_texname.c_str()];
+				}
+				else
+				{
+					TextureLoadInfo loadInfo;
+					//loadInfo.IsSRGB = true;
+					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
+					RefCntAutoPtr<ITexture> Tex;
+					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->alpha_texname;
+					CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
+					m_textureArray[mp->alpha_texname.c_str()] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+					meshe.m_alphaTextureView = m_textureArray[mp->alpha_texname.c_str()];
+				}
+			}
+			
 			if (mp->diffuse_texname.length() >= 1)
 			{
 				auto t = m_textureArray.find("");
@@ -236,6 +260,7 @@ void ObjModel::loadObjFile(const std::string& path)
 				{
 					TextureLoadInfo loadInfo;
 					loadInfo.IsSRGB = true;
+					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
 					RefCntAutoPtr<ITexture> Tex;
 					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->diffuse_texname;
 					CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
@@ -243,6 +268,23 @@ void ObjModel::loadObjFile(const std::string& path)
 					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
 				}
 				
+			}
+		}
+		else
+		{
+			if (m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"])
+			{
+				meshe.m_alphaTextureView = m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"];
+			}
+			else
+			{
+				TextureLoadInfo loadInfo;
+				//loadInfo.IsSRGB = true;
+				loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
+				RefCntAutoPtr<ITexture> Tex;
+				CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pDevice, &Tex);
+				m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+				meshe.m_alphaTextureView = m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"];
 			}
 		}
 		

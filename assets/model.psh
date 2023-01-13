@@ -1,5 +1,7 @@
 Texture2D    g_Texture;
+Texture2D   g_AlphaTexture;
 SamplerState g_Texture_sampler; // By convention, texture samplers must use the '_sampler' suffix
+SamplerState g_AlphaTexture_sampler;
 
 struct PSInput 
 { 
@@ -16,11 +18,19 @@ void main(in  PSInput  PSIn,
           out PSOutput PSOut)
 {
 	
-	float4 texColor = g_Texture.Sample(g_Texture_sampler, PSIn.UV);
-	if(texColor.a < 0.5)
-	{
-		discard;
-	}
-	
-    PSOut.Color = texColor; 
+    float4 texAlpha = g_AlphaTexture.Sample(g_AlphaTexture_sampler, PSIn.UV);
+    float4 texColor = g_Texture.Sample(g_Texture_sampler, PSIn.UV);
+    if(texAlpha.r > 0.5)
+    {
+       
+        PSOut.Color = texColor;
+    }
+    else
+    {
+        discard;
+        PSOut.Color = texColor;
+        
+    }
+   // clip(texColor.a - 0.5);
+    
 }

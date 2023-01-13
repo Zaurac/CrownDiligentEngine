@@ -45,6 +45,7 @@ public:
 	std::vector<uint32_t> m_indices;
 
 	RefCntAutoPtr<ITextureView> m_diffuseTextureView;
+	RefCntAutoPtr<ITextureView> m_alphaTextureView;
 	RefCntAutoPtr<IPipelineState> m_pipeline;
 	RefCntAutoPtr<IShaderResourceBinding> m_pSRB;
 

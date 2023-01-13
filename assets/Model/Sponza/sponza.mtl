@@ -12,8 +12,8 @@ newmtl leaf
 	Kd 1 1 1
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka textures\sponza_thorn_diff.dds
-	map_Kd textures\sponza_thorn_diff.dds
+	map_Ka textures\sponza_thorn_diff.png
+	map_Kd textures\sponza_thorn_diff.png
 	map_d textures\sponza_thorn_mask.dds
 	map_bump textures\sponza_thorn_bump.dds
 
@@ -43,8 +43,8 @@ newmtl Material__57
 	Kd 1 1 1
 	Ks 0.000 0.000 0.000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka textures\vase_plant.dds
-	map_Kd textures\vase_plant.dds
+	map_Ka textures\vase_plant.png
+	map_Kd textures\vase_plant.png
 	map_d textures\vase_plant_mask.dds
 
 newmtl Material__298

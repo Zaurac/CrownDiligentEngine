@@ -453,7 +453,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		fpsCounterSS << "" << " - " << std::fixed << std::setprecision(1) << filteredFrameTime * 1000;
 		fpsCounterSS << " ms (" << 1.0 / filteredFrameTime << " fps)";
 
-		std::cout << fpsCounterSS.str() << std::endl;
+		//std::cout << fpsCounterSS.str() << std::endl;
 
 		pSwapchain->Present(0);
 	}
