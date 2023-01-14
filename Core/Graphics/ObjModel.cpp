@@ -186,8 +186,17 @@ void ObjModel::loadObjFile(const std::string& path)
 			materials[i].diffuse_texname.c_str());
 	}*/
 
+
+	//DEFAULT ALPHA TEXTURE
+	RefCntAutoPtr<ITextureView> m_DefaultAlphaTexture;
+	TextureLoadInfo loadInfo;
+	loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
+	RefCntAutoPtr<ITexture> TexAlpha;
+	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pDevice, &TexAlpha);
+	m_DefaultAlphaTexture = TexAlpha->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
 	
 	std::unordered_map<const char*, RefCntAutoPtr<ITextureView>> m_textureArray;
+	
 	for (auto i = 0; i < shapes.size(); i++)
 	{
 		Mesh meshe;
@@ -226,12 +235,14 @@ void ObjModel::loadObjFile(const std::string& path)
 			
 		}
 
+		//TEXTURING
 		if (shapes[i].mesh.material_ids[0] >= 0)
 		{
 			tinyobj::material_t* mp = &materials[shapes[i].mesh.material_ids[0]];
+			//ALPHA
 			if (mp->alpha_texname.length() >= 1)
 			{
-				auto t = m_textureArray.find("");
+				//std::cout << "Texture Alpha: " << mp->alpha_texname.c_str() << std::endl;
 				if (m_textureArray[mp->alpha_texname.c_str()])
 				{
 					meshe.m_alphaTextureView = m_textureArray[mp->alpha_texname.c_str()];
@@ -239,7 +250,6 @@ void ObjModel::loadObjFile(const std::string& path)
 				else
 				{
 					TextureLoadInfo loadInfo;
-					//loadInfo.IsSRGB = true;
 					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
 					RefCntAutoPtr<ITexture> Tex;
 					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->alpha_texname;
@@ -248,10 +258,15 @@ void ObjModel::loadObjFile(const std::string& path)
 					meshe.m_alphaTextureView = m_textureArray[mp->alpha_texname.c_str()];
 				}
 			}
-			
+			else
+			{
+				meshe.m_alphaTextureView = m_DefaultAlphaTexture;
+			}
+
+			//DIFFUSE
 			if (mp->diffuse_texname.length() >= 1)
 			{
-				auto t = m_textureArray.find("");
+				//std::cout << "Texture Diffuse: " << mp->diffuse_texname.c_str() << std::endl;
 				if (m_textureArray[mp->diffuse_texname.c_str()])
 				{
 					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
@@ -268,23 +283,6 @@ void ObjModel::loadObjFile(const std::string& path)
 					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
 				}
 				
-			}
-		}
-		else
-		{
-			if (m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"])
-			{
-				meshe.m_alphaTextureView = m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"];
-			}
-			else
-			{
-				TextureLoadInfo loadInfo;
-				//loadInfo.IsSRGB = true;
-				loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
-				RefCntAutoPtr<ITexture> Tex;
-				CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pDevice, &Tex);
-				m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-				meshe.m_alphaTextureView = m_textureArray["F:/CustomEngine/CrownDiligentEngine/assets/alpha.png"];
 			}
 		}
 		

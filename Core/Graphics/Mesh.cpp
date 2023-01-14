@@ -70,15 +70,18 @@ void Mesh::CreatePipeline(IPipelineState * pipeline)
 	{
 		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_diffuseTextureView);
 	}
+
 	if (!m_alphaTextureView)
 	{
+		std::cout << "TEST" << std::endl;
+		/*std::cout << "Create Texture Alpha" << std::endl;
 		TextureLoadInfo loadInfo;
 		loadInfo.IsSRGB = true;
 		loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
 		RefCntAutoPtr<ITexture> Tex;
 		CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pRenderDevice, &Tex);
 		m_alphaTextureView = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlphaTexture")->Set(m_alphaTextureView);
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlphaTexture")->Set(m_alphaTextureView);*/
 	}
 	else
 	{
