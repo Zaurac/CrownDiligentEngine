@@ -24,6 +24,8 @@
 #include "../../DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
 
+#include "../../DiligentCore/Graphics/GraphicsTools/interface/ShaderMacroHelper.hpp"
+
 #include "Mesh.hpp"
 
 #include "tiny_obj_loader.h"
@@ -39,37 +41,44 @@ private:
 	struct Vertex
 	{
 		float3 position;
+		float3 normal;
 		float2 uv;
 	};
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
-	std::vector<Mesh> m_meshes;
-
-	float4x4 m_ModelMatrix;
+	
+	CameraAttribs m_CameraAttribs;
 
 public:
 	ObjModel(ISwapChain* pSwapChain, IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext);
 	~ObjModel() = default;
 	void loadObjFile(const std::string &path);
+	void AssignLightAttribs(LightAttribs lightAttribs) { m_pLightAttribs = lightAttribs;};
 	void CreatePipeline();
 	void CreateShader();
-	void update(float eplapsedTime, float4x4 matrix);
-	void draw(bool bIsShadowPass, const ViewFrustumExt& Frustum);
-
+	void update(float eplapsedTime, CameraAttribs cameraAttribs);
+	void draw(CameraAttribs camAttrib, LightAttribs lightAttrib, const ViewFrustumExt& Frustum);
+	void DrawShadowMap(CameraAttribs &camAttrib, ViewFrustumExt& frustrum);
+	std::vector<Mesh> m_meshes;
 private:
-	
-	
 
+	//BASIC PIPELINE
 	RefCntAutoPtr<IShader> pVS;
 	RefCntAutoPtr<IShader> pPS;
-
 	RefCntAutoPtr<IEngineFactory> m_pEngineFactory;
 	RefCntAutoPtr<IRenderDevice> m_pDevice;
 	RefCntAutoPtr<ISwapChain> m_pSwapChain;
 	RefCntAutoPtr<IDeviceContext> m_pDeviceContext;
+	RefCntAutoPtr<IPipelineState> m_pBasicPSO;
+	RefCntAutoPtr<IBuffer> m_UBCamera;
+	RefCntAutoPtr<IBuffer> m_UBLightAttribs;
 
-	RefCntAutoPtr<IPipelineState> m_pModelPipeline;
-	RefCntAutoPtr<IBuffer> m_pUniformBuffer;
+	//SHADOW PIEPLINE
+	RefCntAutoPtr<IPipelineState> m_ShadowPSO;
+	RefCntAutoPtr<IShader> m_ShadowVS;
+
+	ShadowSettings m_ShadowSettings;
+	LightAttribs m_pLightAttribs;
 };
 

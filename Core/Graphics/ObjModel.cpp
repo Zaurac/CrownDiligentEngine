@@ -14,14 +14,23 @@ void ObjModel::CreatePipeline()
 {
 	CreateShader();
 
+	//BASIC PIPELINE
 	//UNIFORM BUFFER
 	BufferDesc CBDesc;
 	CBDesc.Name = "VS Constant CB";
-	CBDesc.Size = sizeof(float4x4);
+	CBDesc.Size = sizeof(CameraAttribs);
 	CBDesc.Usage = USAGE_DYNAMIC;
 	CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
 	CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
-	m_pDevice->CreateBuffer(CBDesc, nullptr, &m_pUniformBuffer);
+	m_pDevice->CreateBuffer(CBDesc, nullptr, &m_UBCamera);
+
+	//LihhtAttribs UNIFORM BUFFER
+	CBDesc.Name = "VS LightAttribs CB";
+	CBDesc.Size = sizeof(LightAttribs);
+	CBDesc.Usage = USAGE_DYNAMIC;
+	CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
+	CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+	m_pDevice->CreateBuffer(CBDesc, nullptr, &m_UBLightAttribs);
 
 	GraphicsPipelineStateCreateInfo PSOCreateInfo;
 	PSOCreateInfo.PSODesc.Name = "Model Pipeline";
@@ -30,9 +39,6 @@ void ObjModel::CreatePipeline()
 	PSOCreateInfo.pVS = pVS;
 	//TYPE PIPELINE
 	PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
-
-	BlendStateDesc blendDesc;
-	blendDesc.RenderTargets[0].BlendEnable = false;
 
 	// clang-format off
 	// This tutorial will render to a single render target
@@ -47,15 +53,15 @@ void ObjModel::CreatePipeline()
 	PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
 	// clang-format on
 	PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
-	//BLEND Desc
-	PSOCreateInfo.GraphicsPipeline.BlendDesc = blendDesc;
 
 	LayoutElement LayoutElems[] =
 	{
 		//POSITION
 		LayoutElement{0,0,3, VT_FLOAT32, false},
+		//NORMAL
+		LayoutElement{1,0,3, VT_FLOAT32, false},
 		//UV
-		LayoutElement{1,0,2, VT_FLOAT32, false},
+		LayoutElement{2,0,2, VT_FLOAT32, false},
 	};
 	PSOCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
 	PSOCreateInfo.GraphicsPipeline.InputLayout.NumElements = _countof(LayoutElems);
@@ -64,40 +70,76 @@ void ObjModel::CreatePipeline()
 
 	ShaderResourceVariableDesc Vars[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC},
-		{SHADER_TYPE_PIXEL, "g_AlphaTexture", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
+		{SHADER_TYPE_PIXEL, "g_tex2DDiffuse", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC},
+		{SHADER_TYPE_PIXEL, m_ShadowSettings.iShadowMode == SHADOW_MODE_PCF ? "g_tex2DShadowMap" : "g_tex2DFilterableShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
+		{SHADER_TYPE_PIXEL, "g_tex2DAlpha", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.Variables = Vars;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumVariables = _countof(Vars);
 
-	SamplerDesc SamLinearDesc
-	{
-		 FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
-		TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP
-	};
+	SamplerDesc SamLinearDesc{
+	FILTER_TYPE_ANISOTROPIC, FILTER_TYPE_ANISOTROPIC, FILTER_TYPE_ANISOTROPIC,
+	TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP };
+
 
 	ImmutableSamplerDesc ImtblSamplers[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture", SamLinearDesc},
-		{SHADER_TYPE_PIXEL, "g_AlphaTexture", SamLinearDesc}
+		{SHADER_TYPE_PIXEL, "g_tex2DDiffuse", SamLinearDesc},
+		//{SHADER_TYPE_PIXEL, "g_AlphaTexture", SamLinearDesc}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
 
-	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pModelPipeline);
-	m_pModelPipeline->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_pUniformBuffer);
+	if (m_pDevice->GetDeviceInfo().Features.DepthClamp)
+	{
+		PSOCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = true;
+	}
+
+	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pBasicPSO);
+	m_pBasicPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "cbCameraAttribs")->Set(m_UBCamera);
+	m_pBasicPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "cbLightAttribs")->Set(m_UBLightAttribs);
+	m_pBasicPSO->GetStaticVariableByName(SHADER_TYPE_PIXEL, "cbLightAttribs")->Set(m_UBLightAttribs);
+
+	//SHADOW MESH  PIPELINE
+	GraphicsPipelineStateCreateInfo PSOShadowCreateInfo;
+	PSOShadowCreateInfo.PSODesc.Name = "Mesh Shadow PSO";
+	PSOShadowCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+	PSOShadowCreateInfo.GraphicsPipeline.NumRenderTargets = 0;
+	PSOShadowCreateInfo.GraphicsPipeline.RTVFormats[0]	  = TEX_FORMAT_UNKNOWN;
+	PSOShadowCreateInfo.GraphicsPipeline.DSVFormat		  = m_ShadowSettings.Format;
+	PSOShadowCreateInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
+	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS_EQUAL;
+	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
+	PSOShadowCreateInfo.pVS = m_ShadowVS;
+	PSOShadowCreateInfo.pPS = nullptr;
+	PSOShadowCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
+	PSOShadowCreateInfo.GraphicsPipeline.InputLayout.NumElements = _countof(LayoutElems);
+	PSOShadowCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
+	if (m_pDevice->GetDeviceInfo().Features.DepthClamp)
+	{
+		PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = false;
+	}
+	m_pDevice->CreatePipelineState(PSOShadowCreateInfo, &m_ShadowPSO);
+	m_ShadowPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "cbCameraAttribs")->Set(m_UBCamera);
 
 	for (auto i = 0; i < m_meshes.size(); i++)
 	{
-		m_meshes[i].SetSystem(m_pDevice, m_pDeviceContext);
-		m_meshes[i].CreatePipeline(m_pModelPipeline);
+		m_meshes[i].SetSystem(m_pDevice, m_pDeviceContext, m_pEngineFactory);
+		m_meshes[i].AssignPipeline(m_pBasicPSO, m_ShadowPSO);
 	}
 }
 
 void ObjModel::CreateShader()
 {
+	ShaderMacroHelper Macros;
+	Macros.AddShaderMacro("SHADOW_MODE", m_ShadowSettings.iShadowMode);
+	Macros.AddShaderMacro("SHADOW_FILTER_SIZE", m_pLightAttribs.ShadowAttribs.iFixedFilterSize);
+	Macros.AddShaderMacro("FILTER_ACROSS_CASCADES", m_ShadowSettings.FilterAcrossCascades);
+	Macros.AddShaderMacro("BEST_CASCADE_SEARCH", m_ShadowSettings.SearchBestCascade);
+
 	ShaderCreateInfo ShaderCI;
 	// Tell the system that the shader source code is in HLSL.
 	// For OpenGL, the engine will convert this into GLSL under the hood.
@@ -111,44 +153,75 @@ void ObjModel::CreateShader()
 	ShaderCI.pShaderSourceStreamFactory = pShaderSourceFactory;
 
 	//VERTEX SHADER
+	ShaderCI.Macros = Macros;
 	ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
-	ShaderCI.EntryPoint = "main";
+	ShaderCI.EntryPoint = "MeshVS";
 	//SET_SHADER_RESOURCE_FLAG_ALLOW_OVERWRITE;
 	ShaderCI.Desc.Name = "Model vertex shader";
-	ShaderCI.FilePath = "model.vsh";
+	ShaderCI.FilePath = "MeshVS.vsh";
 	m_pDevice->CreateShader(ShaderCI, &pVS);
 
 
 	//PIXEL SHADER
+	ShaderCI.Macros = Macros;
 	ShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
-	ShaderCI.EntryPoint = "main";
+	ShaderCI.EntryPoint = "MeshPS";
 	ShaderCI.Desc.Name = "Model pixel shader";
-	ShaderCI.FilePath = "model.psh";
+	ShaderCI.FilePath = "MeshPS.psh";
 	m_pDevice->CreateShader(ShaderCI, &pPS);
+
+	//SHADOW VERTEX SHADER
+	Macros.AddShaderMacro("SHADOW_PASS", true);
+	ShaderCI.Desc.Name = "Shadow Mesh VS";
+	ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
+	ShaderCI.Macros = Macros;
+	ShaderCI.EntryPoint = "MeshVS";
+	ShaderCI.FilePath = "MeshVS.vsh";
+	m_pDevice->CreateShader(ShaderCI, &m_ShadowVS);
 }
 
-void ObjModel::update(float eplapsedTime, float4x4 matrix)
+void ObjModel::update(float eplapsedTime, CameraAttribs cameraAttribs)
 {
-	m_ModelMatrix = matrix;
+	m_CameraAttribs = cameraAttribs;
+
 	for (auto i = 0; i < m_meshes.size(); i++)
 	{
-		m_meshes[i].Update(m_ModelMatrix);
+		m_meshes[i].Update();
 	}
 }
 
-void ObjModel::draw(bool bIsShadowPass, const ViewFrustumExt& Frustum)
+
+void ObjModel::draw(CameraAttribs camAttrib,LightAttribs lightAttrib ,const ViewFrustumExt& Frustum)
 {
 	{
-		MapHelper<float4x4> CBConstant(m_pDeviceContext, m_pUniformBuffer, MAP_WRITE, MAP_FLAG_DISCARD);
-		*CBConstant = m_ModelMatrix.Transpose();
+		MapHelper<CameraAttribs> CBConstant(m_pDeviceContext, m_UBCamera, MAP_WRITE, MAP_FLAG_DISCARD);
+		*CBConstant = camAttrib;
+	}
+
+	{
+		MapHelper<LightAttribs> CBConstant(m_pDeviceContext, m_UBLightAttribs, MAP_WRITE, MAP_FLAG_DISCARD);
+		*CBConstant = lightAttrib;
 	}
 
 	for (auto j =0; j < m_meshes.size(); ++j)
 	{
-		m_meshes[j].Draw(m_pDeviceContext, bIsShadowPass, Frustum);
+		m_meshes[j].Draw(m_pDeviceContext, false, Frustum);
 	}
 }
 
+void ObjModel::DrawShadowMap(CameraAttribs &camAttrib, ViewFrustumExt &frustrum)
+{
+	{
+		MapHelper<CameraAttribs> CameraData(m_pDeviceContext, m_UBCamera, MAP_WRITE, MAP_FLAG_DISCARD);
+		*CameraData = camAttrib;
+	}
+
+	for (auto j = 0; j < m_meshes.size(); ++j)
+	{
+		m_meshes[j].Draw(m_pDeviceContext, true, frustrum);
+	}
+
+}
 
 
 void ObjModel::loadObjFile(const std::string& path)
@@ -210,6 +283,13 @@ void ObjModel::loadObjFile(const std::string& path)
 			position.y = attributes.vertices[3 * index.vertex_index + 1];
 			position.z = attributes.vertices[3 * index.vertex_index + 2];
 
+
+			float3 normal;
+			normal.x = attributes.normals[3 * index.normal_index];
+			normal.y = attributes.normals[3 * index.normal_index + 1];
+			normal.z = attributes.normals[3 * index.normal_index + 2];
+
+
 			float2 uv;
 
 			if (index.texcoord_index == -1)
@@ -227,7 +307,7 @@ void ObjModel::loadObjFile(const std::string& path)
 			if (uniqueVertices.count(position) == 0)
 			{
 				uniqueVertices[position] = static_cast<uint32_t>(meshe.m_vertices.size());
-				meshe.m_vertices.push_back(Mesh::Vertex{ position, uv });
+				meshe.m_vertices.push_back(Mesh::Vertex{ position, normal, uv  });
 			}
 
 			meshe.m_indices.push_back(uniqueVertices[position]);
@@ -239,6 +319,7 @@ void ObjModel::loadObjFile(const std::string& path)
 		if (shapes[i].mesh.material_ids[0] >= 0)
 		{
 			tinyobj::material_t* mp = &materials[shapes[i].mesh.material_ids[0]];
+
 			//ALPHA
 			if (mp->alpha_texname.length() >= 1)
 			{
@@ -289,5 +370,4 @@ void ObjModel::loadObjFile(const std::string& path)
 		m_meshes.push_back(meshe);
 		uniqueVertices.clear();
 	}
-	CreatePipeline();
 }

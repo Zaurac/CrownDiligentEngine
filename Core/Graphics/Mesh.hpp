@@ -24,6 +24,8 @@
 #include "../../DiligentCore/Common/interface/RefCntAutoPtr.hpp"
 #include "../../DiligentCore/Common/interface/BasicMath.hpp"
 
+#include "ShadowSettings.h"
+
 using namespace Diligent;
 
 class Mesh
@@ -32,12 +34,10 @@ public:
 	struct Vertex
 	{
 		float3 position;
+		float3 Normal;
 		float2 uv;
 	};
 
-	float4x4 m_ModelMatrix;
-
-	RefCntAutoPtr<IBuffer> m_UniformBuffer;
 	RefCntAutoPtr<IBuffer> m_IndexBuffer;
 	RefCntAutoPtr<IBuffer> m_VerticesBuffer;
 
@@ -49,11 +49,11 @@ public:
 	RefCntAutoPtr<IPipelineState> m_pipeline;
 	RefCntAutoPtr<IShaderResourceBinding> m_pSRB;
 
-	void SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateContext);
-	void CreatePipeline(IPipelineState* pipeline);
-	void Update(float4x4 matrix);
+	void SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateContext, IEngineFactory* eningeFactory);
+	void AssignPipeline(IPipelineState* basic_pipeline, IPipelineState* shadow_pipeline);
+	void AssignShadowManager(ShadowMapManager &shadowManager) { m_shadowMapManager = shadowManager;};
+	void Update();
 	void Draw(IDeviceContext* immediateContext, bool bIsShadowPass, const ViewFrustumExt& Frustum);
-
 public:
 	Mesh();
 	~Mesh() = default;
@@ -62,4 +62,11 @@ private:
 	void CreateBuffer();
 	RefCntAutoPtr<IRenderDevice> m_pRenderDevice;
 	RefCntAutoPtr<IDeviceContext> m_ImmediateContext;
+	RefCntAutoPtr<IEngineFactory> m_EngineFactory;
+
+	//SHADOW
+	RefCntAutoPtr<IPipelineState> m_ShadowPSO;
+	RefCntAutoPtr<IShaderResourceBinding> m_ShadowSRB;
+	ShadowSettings m_shadowSettings;
+	ShadowMapManager m_shadowMapManager;
 };

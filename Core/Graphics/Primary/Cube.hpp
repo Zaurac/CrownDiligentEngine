@@ -61,7 +61,7 @@ private:
 
 	float4x4 m_ModelMatrix;
 
-	int nbrInstances = 20;
+	int nbrInstances = 200;
 	int numTextures = 3;
 
 public:

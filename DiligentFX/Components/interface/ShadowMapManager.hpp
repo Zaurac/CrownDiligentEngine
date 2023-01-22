@@ -39,7 +39,7 @@
 namespace Diligent
 {
 
-#include "assets/BasicStructures.fxh"
+#include "F:/CustomEngine/CrownDiligentEngine/assets/BasicStructures.fxh"
 
 class ShadowMapManager
 {

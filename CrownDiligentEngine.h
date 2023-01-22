@@ -3,8 +3,6 @@
 #include "DiligentCore/Common/interface/BasicMath.hpp"
 #include "Core/Graphics/Primary/Cube.hpp"
 #include "Core/Graphics/ObjModel.hpp"
-
-
 using namespace Diligent;
 
 	class CrownDiligentEngine : public GLFWSample
@@ -21,23 +19,43 @@ using namespace Diligent;
 
 
 		void Render() override;
+		void CreateShadowMap();
 
 
 		void ShutDown() override;
 
 		void UpdateCamera(float ElapsedTime);
-
+		void RenderShadowMap();
 
 		float4x4 GetReferenceRotiation() const;
-
 		
+
+		void WindowResize(Uint32 Width, Uint32 Height) override;
+
 	private:
 		//std::unique_ptr<Cube> m_pCube;
 		Cube * m_pCube = NULL;
 		ObjModel *m_model = NULL;
 
+		//SHADOW
+		CameraAttribs m_camAttribs;
+		LightAttribs m_LigthAttribs;
+		
+		ShadowSettings m_shadowSettings;
+		ShadowMapManager m_ShadowMapMgr;
+
+		RefCntAutoPtr<ISampler> m_pComparisonSampler;
+		RefCntAutoPtr<ISampler> m_pFilterableShadowMapSampler;
+
+		struct Camera 
+		{
+			float4x4 viewMatrix;
+			float4x4 projMatrix;
+		}m_camera;
+
+		//CAMERA + MOUSE
 		float4x4 m_WorldViewProjMatrix;
-		//float4x4 View;
+		float4x4 m_worldMatrix;
 
 		//Camera
 		float3 m_ReferenceRightAxis = float3{ 1, 0, 0 };
@@ -48,8 +66,6 @@ using namespace Diligent;
 		float yaw = 0.0f, pitch = 0.0f;
 		
 		float3 m_CameraPos;
-		float4x4 m_ViewMatrix;
-		float    m_fMoveSpeed = 100.f;
+		float    m_fMoveSpeed = 500.f;
 		float    m_fCurrentSpeed = 0.f;
-
 	};

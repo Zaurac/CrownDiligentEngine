@@ -16,9 +16,9 @@
 #pragma once
 #include <algorithm>
 
-#include "imgui.h"
+#include "F:/CustomEngine/CrownDiligentEngine/DiligentTools/ThirdParty/imgui/imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include "F:/CustomEngine/CrownDiligentEngine/DiligentTools/ThirdParty/imgui/imgui_internal.h"
 
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////

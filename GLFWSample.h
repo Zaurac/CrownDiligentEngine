@@ -85,6 +85,7 @@ RefCntAutoPtr<IEngineFactory> m_pEngineFactory;
 RefCntAutoPtr<IRenderDevice>  m_pDevice;
 RefCntAutoPtr<IDeviceContext> m_pImmediateContext;
 RefCntAutoPtr<ISwapChain>     m_pSwapChain;
+
 GLFWwindow* m_Window = nullptr;
 
 IEngineFactory* GetEngineFactory() { return m_pDevice->GetEngineFactory(); }
@@ -105,6 +106,7 @@ public:
 	virtual void Update(double CurrTime, double ElapsedTime) = 0;
 	virtual void Render() = 0;
 	virtual void ShutDown() = 0;
+	virtual void WindowResize(Uint32 Width, Uint32 Height) = 0;
 
 	// Returns projection matrix adjusted to the current screen orientation
 	float4x4 GetAdjustedProjectionMatrix(float FOV, float NearPlane, float FarPlane) const
@@ -133,6 +135,9 @@ public:
 		Proj._11 = XScale;
 		Proj._22 = YScale;
 		Proj.SetNearFarClipPlanes(NearPlane, FarPlane, m_pDevice->GetDeviceInfo().IsGLDevice());
+
+		Proj = float4x4::Projection(FOV, AspectRatio, NearPlane, FarPlane, m_pDevice->GetDeviceInfo().IsGLDevice());
+
 		return Proj;
 	}
 
@@ -171,11 +176,13 @@ public:
 	}
 
 private:
+
 	
 };
 
 int m_key;
 int m_state;
+bool windowResize;
 
 static void error_callback(int error, const char* description)
 {
@@ -194,13 +201,13 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 static void resize_callback(GLFWwindow* window, int width, int height)
 {
 	m_pSwapChain->Resize(static_cast<Uint32>(width), static_cast<Uint32>(height));
+	windowResize = true;
 }
 
 int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 {
 	if (glfwInit() != GLFW_TRUE)
 		return false;
-
 
 	RENDER_DEVICE_TYPE DevType = RENDER_DEVICE_TYPE_D3D11;
 	//if (!Samp->ProcessCommandLine(argc, argv, DevType))
@@ -412,19 +419,23 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 		app->Update(CurrTime, ElapsedTime);
 
-		
+		if (windowResize)
+		{
+			app->WindowResize(SCDesc.Width, SCDesc.Height);
+			windowResize = false;
+		}
 
 		auto* pContext = GetContext();
 		auto* pSwapchain = GetSwapChain();
 		
 
 		// Clear the back buffer
-		const float ClearColor[] = { 0.350f, 0.350f, 0.350f, 1.0f };
+		//const float ClearColor[] = { 0.350f, 0.350f, 0.350f, 1.0f };
 		// Let the engine perform required state transitions
-		auto* pRTV = pSwapchain->GetCurrentBackBufferRTV();
-		auto* pDSV = pSwapchain->GetDepthBufferDSV();
+		//auto* pRTV = pSwapchain->GetCurrentBackBufferRTV();
+		//auto* pDSV = pSwapchain->GetDepthBufferDSV();
 
-		pContext->SetRenderTargets(1, &pRTV, pDSV, Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		//pContext->SetRenderTargets(1, &pRTV, pDSV, Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
 		const float DebugColor[] = { 1.f, 0.f, 0.f, 1.f };
 		m_pImmediateContext->BeginDebugGroup("Graphics", DebugColor);
@@ -435,7 +446,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 		m_pImmediateContext->EndDebugGroup();
 
-		pContext->SetRenderTargets(1, &pRTV, pDSV, Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		//pContext->SetRenderTargets(1, &pRTV, pDSV, Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
 		if (m_pImGui)
 		{
@@ -463,6 +474,8 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 	
 	app->ShutDown();
 
+	
+
 	if (m_pImmediateContext)
 		m_pImmediateContext->Flush();
 
@@ -476,7 +489,6 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		glfwTerminate();
 		
 	}
-
 	exit(EXIT_SUCCESS);
 }
 

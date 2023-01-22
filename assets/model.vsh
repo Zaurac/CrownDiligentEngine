@@ -1,6 +1,18 @@
-cbuffer Constants
+#include "BasicStructures.fxh"
+
+#ifndef SHADOW_PASS
+#   define SHADOW_PASS 0
+#endif
+
+cbuffer cbCameraAttribs
 {
-    float4x4 g_WorldViewProj;
+    CameraAttribs g_CameraAttribs;
+};
+
+
+cbuffer cbLightAttribs
+{
+    LightAttribs g_LightAttribs;
 };
 
 // Vertex shader takes two inputs: vertex position and uv coordinates.
@@ -9,13 +21,15 @@ cbuffer Constants
 struct VSInput
 {
     float3 Pos : ATTRIB0;
-    float2 UV  : ATTRIB1;
+    float3 Normal : ATTRIB1;
+    float2 UV  : ATTRIB2;
 };
 
 struct PSInput 
 { 
     float4 Pos : SV_POSITION; 
     float2 UV  : TEX_COORD; 
+    float3 PosInLightViewSpace : LIGHT_SPACE_POS;
 };
 
 // Note that if separate shader objects are not supported (this is only the case for old GLES3.0 devices), vertex
@@ -24,6 +38,9 @@ struct PSInput
 void main(in  VSInput VSIn,
           out PSInput PSIn) 
 {
-    PSIn.Pos = mul( float4(VSIn.Pos,1.0), g_WorldViewProj);
+    float4 LightSpacePos = mul(float4(VSIn.Pos, 1.0), g_LightAttribs.ShadowAttribs.mWorldToLightView);
+    PSIn.PosInLightViewSpace = LightSpacePos.xyz / LightSpacePos.w;
+    
+    PSIn.Pos = mul(float4(VSIn.Pos, 1.0), g_CameraAttribs.mViewProj);
     PSIn.UV  = VSIn.UV;
 }

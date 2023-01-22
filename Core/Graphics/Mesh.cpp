@@ -30,30 +30,26 @@ void Mesh::CreateBuffer()
 	indexData.DataSize = m_indices.size() * sizeof(uint32_t);
 	indexData.pData = m_indices.data();
 	m_pRenderDevice->CreateBuffer(indexBufferDesc, &indexData, &m_IndexBuffer);
-
-	//UNIFORM BUFFER
-	BufferDesc CBDesc;
-	CBDesc.Name = "VS Constant CB";
-	CBDesc.Size = sizeof(float4x4);
-	CBDesc.Usage = USAGE_DYNAMIC;
-	CBDesc.BindFlags = BIND_UNIFORM_BUFFER;
-	CBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
-	m_pRenderDevice->CreateBuffer(CBDesc, nullptr, &m_UniformBuffer);
 }
 
-void Mesh::SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateContext)
+void Mesh::SetSystem(IRenderDevice* pRenderDevice, IDeviceContext* immediateContext,IEngineFactory* eningeFactory)
 {
 	m_pRenderDevice = pRenderDevice;
 	m_ImmediateContext = immediateContext;
+	m_EngineFactory = eningeFactory;
 }
 
-void Mesh::CreatePipeline(IPipelineState * pipeline)
+void Mesh::AssignPipeline(IPipelineState * basic_pipeline, IPipelineState* shadow_pipeline)
 {
 	CreateBuffer();
 
-	m_pipeline = pipeline;
+	m_pipeline = basic_pipeline;
+	m_ShadowPSO = shadow_pipeline;
 
 	m_pipeline->CreateShaderResourceBinding(&m_pSRB, true);
+
+	//TODO: Optimize load Texture
+	#pragma region TextureRegionBasicPipeline
 
 	if (!m_diffuseTextureView)
 	{
@@ -63,41 +59,46 @@ void Mesh::CreatePipeline(IPipelineState * pipeline)
 		RefCntAutoPtr<ITexture> Tex;
 		CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/default.jpg", loadInfo, m_pRenderDevice, &Tex);
 		m_diffuseTextureView = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_diffuseTextureView);
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DDiffuse")->Set(m_diffuseTextureView);
 
 	}
 	else
 	{
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_diffuseTextureView);
+		VERIFY(m_diffuseTextureView != nullptr, "Material must have diffuse color texture");
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DDiffuse")->Set(m_diffuseTextureView);
 	}
 
-	if (!m_alphaTextureView)
+	if (m_alphaTextureView)
 	{
-		std::cout << "TEST" << std::endl;
-		/*std::cout << "Create Texture Alpha" << std::endl;
-		TextureLoadInfo loadInfo;
-		loadInfo.IsSRGB = true;
-		loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
-		RefCntAutoPtr<ITexture> Tex;
-		CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pRenderDevice, &Tex);
-		m_alphaTextureView = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlphaTexture")->Set(m_alphaTextureView);*/
+		VERIFY(m_diffuseTextureView != nullptr, "Material must have Alpha color texture");
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DAlpha")->Set(m_alphaTextureView);
+	}
+
+	if (m_shadowSettings.iShadowMode == SHADOW_MODE_PCF)
+	{
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DShadowMap")->Set(m_shadowMapManager.GetSRV());
 	}
 	else
 	{
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_AlphaTexture")->Set(m_alphaTextureView);
+		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DFilterableShadowMap")->Set(m_shadowMapManager.GetFilterableSRV());
 	}
+
 	
+	#pragma endregion TextureRegionBasicPipeline
+
+	m_ShadowPSO->CreateShaderResourceBinding(&m_ShadowSRB, true);
 }
 
-void Mesh::Update(float4x4 matrix)
+void Mesh::Update()
 {
-	m_ModelMatrix = matrix;
+	
 }
 
 void Mesh::Draw(IDeviceContext* immediateContext,bool bIsShadowPass, const ViewFrustumExt& Frustum)
 {
-	
+	// Note that Vulkan requires shadow map to be transitioned to DEPTH_READ state, not SHADER_RESOURCE
+	immediateContext->TransitionShaderResources((bIsShadowPass ? m_ShadowPSO : m_pipeline), (bIsShadowPass ? m_ShadowSRB : m_pSRB));
+
 
 	Uint64 offset[] = { 0 };
 	IBuffer* pBuffs[] = { m_VerticesBuffer };
@@ -107,10 +108,16 @@ void Mesh::Draw(IDeviceContext* immediateContext,bool bIsShadowPass, const ViewF
 	{
 		immediateContext->SetIndexBuffer(m_IndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-		// Set the pipeline state in the immediate context
-		m_ImmediateContext->SetPipelineState(m_pipeline);
+		auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
 
-		immediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+		// Set the pipeline state in the immediate context
+		m_ImmediateContext->SetPipelineState(pPSO);
+
+		//immediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+		m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
+
 
 		DrawIndexedAttribs DrawAttrs; // This is an indexed draw call
 		DrawAttrs.IndexType = VT_UINT32; // Index type
@@ -122,10 +129,11 @@ void Mesh::Draw(IDeviceContext* immediateContext,bool bIsShadowPass, const ViewF
 	}
 	else
 	{
+		auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
 		// Set the pipeline state in the immediate context
-		m_ImmediateContext->SetPipelineState(m_pipeline);
+		m_ImmediateContext->SetPipelineState(pPSO);
 
-		immediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
 
 		DrawAttribs DrawAttrs; // This is an indexed draw call
 		DrawAttrs.NumVertices = m_vertices.size();
