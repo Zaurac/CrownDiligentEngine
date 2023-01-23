@@ -56,7 +56,7 @@ public:
 	void Draw(IDeviceContext* immediateContext, bool bIsShadowPass, const ViewFrustumExt& Frustum);
 public:
 	Mesh();
-	~Mesh() = default;
+	~Mesh();
 
 private:
 	void CreateBuffer();

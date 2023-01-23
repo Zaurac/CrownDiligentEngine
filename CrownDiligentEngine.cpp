@@ -2,14 +2,17 @@
 #include "DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
 
 
+
 CrownDiligentEngine::CrownDiligentEngine()
 {
 }
 
 void CrownDiligentEngine::Initialize()
 {
+	
 
 	m_pCube = new Cube(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
+	m_ShadowMapMgr = std::make_unique<ShadowMapManager>();
 	m_model = new ObjModel(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
 
 	m_LigthAttribs.ShadowAttribs.iNumCascades = 4;
@@ -28,10 +31,8 @@ void CrownDiligentEngine::Initialize()
 	m_model->AssignLightAttribs(m_LigthAttribs);
 	for (size_t i = 0; i < m_model->m_meshes.size(); i++)
 	{
-		m_model->m_meshes[i].AssignShadowManager(m_ShadowMapMgr);
+		m_model->m_meshes[i].AssignShadowManager(*m_ShadowMapMgr);
 	}
-	
-
 	m_model->CreatePipeline();
 
 
@@ -72,12 +73,12 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 	DistrInfo.EqualizeExtents = m_shadowSettings.EqualizeExtents;
 	DistrInfo.StabilizeExtents = m_shadowSettings.StabilizeExtents;
 
-	m_ShadowMapMgr.DistributeCascades(DistrInfo, m_LigthAttribs.ShadowAttribs);
+	m_ShadowMapMgr->DistributeCascades(DistrInfo, m_LigthAttribs.ShadowAttribs);
 }
 
 void CrownDiligentEngine::Render()
 {
-	RenderShadowMap();
+	//RenderShadowMap();
 	
 	// Reset default framebuffer
 	auto* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
@@ -107,6 +108,8 @@ void CrownDiligentEngine::Render()
 	ExtractViewFrustumPlanesFromMatrix(CameraViewProj, Frutstum, m_pDevice->GetDeviceInfo().IsGLDevice());
 	m_model->draw(m_camAttribs, m_LigthAttribs ,Frutstum);
 	m_pCube->Draw();
+
+	
 }
 
 void CrownDiligentEngine::CreateShadowMap()
@@ -149,14 +152,15 @@ void CrownDiligentEngine::CreateShadowMap()
 	}
 	SMMgrInitInfo.pFilterableShadowMapSampler = m_pFilterableShadowMapSampler;
 
-	m_ShadowMapMgr.Initialize(m_pDevice, nullptr, SMMgrInitInfo);
+	m_ShadowMapMgr->Initialize(m_pDevice, nullptr, SMMgrInitInfo);
 }
 
 void CrownDiligentEngine::ShutDown()
 {
-
 	m_pComparisonSampler->Release();
 	m_pFilterableShadowMapSampler->Release();
+	m_ShadowMapMgr.reset();
+	m_ShadowMapMgr.release();
 	delete(m_pCube);
 	delete(m_model);
 }
@@ -232,7 +236,7 @@ void CrownDiligentEngine::RenderShadowMap()
 	auto iNumShadowCascades = m_LigthAttribs.ShadowAttribs.iNumCascades;
 	for (int iCascade = 0; iCascade < iNumShadowCascades; ++iCascade)
 	{
-		const auto CascadeProjMatr = m_ShadowMapMgr.GetCascadeTranform(iCascade).Proj;
+		const auto CascadeProjMatr = m_ShadowMapMgr->GetCascadeTranform(iCascade).Proj;
 
 		auto WorldToLightViewSpaceMatr = m_LigthAttribs.ShadowAttribs.mWorldToLightViewT.Transpose();
 		auto WorldToLightProjSpaceMatr = WorldToLightViewSpaceMatr * CascadeProjMatr;
@@ -248,7 +252,7 @@ void CrownDiligentEngine::RenderShadowMap()
 		ShadowCameraAttribs.f4ViewportSize.z = 1.f / ShadowCameraAttribs.f4ViewportSize.x;
 		ShadowCameraAttribs.f4ViewportSize.w = 1.f / ShadowCameraAttribs.f4ViewportSize.y;
 
-		auto* pCascadeDSV = m_ShadowMapMgr.GetCascadeDSV(iCascade);
+		auto* pCascadeDSV = m_ShadowMapMgr->GetCascadeDSV(iCascade);
 		m_pImmediateContext->SetRenderTargets(0, nullptr, pCascadeDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 		m_pImmediateContext->ClearDepthStencil(pCascadeDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
@@ -257,8 +261,8 @@ void CrownDiligentEngine::RenderShadowMap()
 		m_model->DrawShadowMap(ShadowCameraAttribs, Frutstumm);
 
 	}
-		if (m_shadowSettings.iShadowMode > SHADOW_MODE_PCF)
-			m_ShadowMapMgr.ConvertToFilterable(m_pImmediateContext, m_LigthAttribs.ShadowAttribs);
+	if (m_shadowSettings.iShadowMode > SHADOW_MODE_PCF)
+		m_ShadowMapMgr->ConvertToFilterable(m_pImmediateContext, m_LigthAttribs.ShadowAttribs);
 }
 
 #include <algorithm>

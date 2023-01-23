@@ -205,7 +205,8 @@ static void resize_callback(GLFWwindow* window, int width, int height)
 }
 
 int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
-{
+{	
+
 	if (glfwInit() != GLFW_TRUE)
 		return false;
 
@@ -476,6 +477,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 	
 
+
 	if (m_pImmediateContext)
 		m_pImmediateContext->Flush();
 
@@ -489,6 +491,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		glfwTerminate();
 		
 	}
+
 	exit(EXIT_SUCCESS);
 }
 

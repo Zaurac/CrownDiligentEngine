@@ -7,6 +7,11 @@ Mesh::Mesh()
 
 }
 
+Mesh::~Mesh()
+{
+	//m_shadowMapManager.Release();
+}
+
 void Mesh::CreateBuffer()
 {
 	//Vertex Buffer

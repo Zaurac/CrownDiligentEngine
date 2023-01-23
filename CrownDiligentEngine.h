@@ -33,7 +33,6 @@ using namespace Diligent;
 		void WindowResize(Uint32 Width, Uint32 Height) override;
 
 	private:
-		//std::unique_ptr<Cube> m_pCube;
 		Cube * m_pCube = NULL;
 		ObjModel *m_model = NULL;
 
@@ -42,7 +41,7 @@ using namespace Diligent;
 		LightAttribs m_LigthAttribs;
 		
 		ShadowSettings m_shadowSettings;
-		ShadowMapManager m_ShadowMapMgr;
+		std::unique_ptr<ShadowMapManager> m_ShadowMapMgr;
 
 		RefCntAutoPtr<ISampler> m_pComparisonSampler;
 		RefCntAutoPtr<ISampler> m_pFilterableShadowMapSampler;

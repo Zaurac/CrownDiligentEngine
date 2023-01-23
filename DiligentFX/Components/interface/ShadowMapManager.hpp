@@ -131,6 +131,7 @@ public:
 private:
     void InitializeConversionTechniques(TEXTURE_FORMAT FilterableShadowMapFmt);
     void InitializeResourceBindings();
+    
 
     int                                      m_ShadowMode = 0;
     RefCntAutoPtr<IRenderDevice>             m_pDevice;
