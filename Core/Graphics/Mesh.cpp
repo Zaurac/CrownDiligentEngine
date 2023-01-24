@@ -56,18 +56,7 @@ void Mesh::AssignPipeline(IPipelineState * basic_pipeline, IPipelineState* shado
 	//TODO: Optimize load Texture
 	#pragma region TextureRegionBasicPipeline
 
-	if (!m_diffuseTextureView)
-	{
-		TextureLoadInfo loadInfo;
-		loadInfo.IsSRGB = true;
-		loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
-		RefCntAutoPtr<ITexture> Tex;
-		CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/default.jpg", loadInfo, m_pRenderDevice, &Tex);
-		m_diffuseTextureView = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DDiffuse")->Set(m_diffuseTextureView);
-
-	}
-	else
+	if (m_diffuseTextureView)
 	{
 		VERIFY(m_diffuseTextureView != nullptr, "Material must have diffuse color texture");
 		m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_tex2DDiffuse")->Set(m_diffuseTextureView);
@@ -104,50 +93,56 @@ void Mesh::Draw(IDeviceContext* immediateContext,bool bIsShadowPass, const ViewF
 	// Note that Vulkan requires shadow map to be transitioned to DEPTH_READ state, not SHADER_RESOURCE
 	immediateContext->TransitionShaderResources((bIsShadowPass ? m_ShadowPSO : m_pipeline), (bIsShadowPass ? m_ShadowSRB : m_pSRB));
 
-
-	Uint64 offset[] = { 0 };
-	IBuffer* pBuffs[] = { m_VerticesBuffer };
-	immediateContext->SetVertexBuffers(0, 1, pBuffs, offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
-
-	if (m_indices.size() > 0)
+	if (GetBoxVisibility(Frustum, m_boundingBox, bIsShadowPass ? FRUSTUM_PLANE_FLAG_OPEN_NEAR : FRUSTUM_PLANE_FLAG_FULL_FRUSTUM) == BoxVisibility::Invisible)
 	{
-		immediateContext->SetIndexBuffer(m_IndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-
-		auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
-
-
-		// Set the pipeline state in the immediate context
-		m_ImmediateContext->SetPipelineState(pPSO);
-
-		//immediateContext->CommitShaderResources(m_pSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-
-		m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
-
-
-		DrawIndexedAttribs DrawAttrs; // This is an indexed draw call
-		DrawAttrs.IndexType = VT_UINT32; // Index type
-		DrawAttrs.NumIndices = m_indices.size();
-		// Verify the state of vertex and index buffers as well as consistence of 
-		// render targets and correctness of draw command arguments
-		DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
-		immediateContext->DrawIndexed(DrawAttrs);
+		
 	}
 	else
 	{
-		auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
-		// Set the pipeline state in the immediate context
-		m_ImmediateContext->SetPipelineState(pPSO);
+		Uint64 offset[] = { 0 };
+		IBuffer* pBuffs[] = { m_VerticesBuffer };
+		immediateContext->SetVertexBuffers(0, 1, pBuffs, offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
 
-		m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
+		if (m_indices.size() > 0)
+		{
+			immediateContext->SetIndexBuffer(m_IndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-		DrawAttribs DrawAttrs; // This is an indexed draw call
-		DrawAttrs.NumVertices = m_vertices.size();
-		DrawAttrs.FirstInstanceLocation = 0;
-		// Verify the state of vertex and index buffers as well as consistence of 
-		// render targets and correctness of draw command arguments
-		DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
-		immediateContext->Draw(DrawAttrs);
+			auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
+
+
+			// Set the pipeline state in the immediate context
+			m_ImmediateContext->SetPipelineState(pPSO);
+
+			m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
+
+
+			DrawIndexedAttribs DrawAttrs; // This is an indexed draw call
+			DrawAttrs.IndexType = VT_UINT32; // Index type
+			DrawAttrs.NumIndices = m_indices.size();
+			// Verify the state of vertex and index buffers as well as consistence of 
+			// render targets and correctness of draw command arguments
+			DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
+			immediateContext->DrawIndexed(DrawAttrs);
+		}
+		else
+		{
+			auto& pPSO = (bIsShadowPass ? m_ShadowPSO : m_pipeline);
+			// Set the pipeline state in the immediate context
+			m_ImmediateContext->SetPipelineState(pPSO);
+
+			m_ImmediateContext->CommitShaderResources((bIsShadowPass ? m_ShadowSRB : m_pSRB), RESOURCE_STATE_TRANSITION_MODE_VERIFY);
+
+			DrawAttribs DrawAttrs; // This is an indexed draw call
+			DrawAttrs.NumVertices = m_vertices.size();
+			DrawAttrs.FirstInstanceLocation = 0;
+			// Verify the state of vertex and index buffers as well as consistence of 
+			// render targets and correctness of draw command arguments
+			DrawAttrs.Flags = DRAW_FLAG_VERIFY_ALL;
+			immediateContext->Draw(DrawAttrs);
+		}
 	}
+
+	
 	
 }
 

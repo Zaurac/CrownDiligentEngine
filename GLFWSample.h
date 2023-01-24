@@ -306,6 +306,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		m_pEngineFactory = pFactoryD3D12;
 
 		EngineD3D12CreateInfo EngineCI;
+		EngineCI.EnableValidation = true;
 		pFactoryD3D12->CreateDeviceAndContextsD3D12(EngineCI, &m_pDevice, &m_pImmediateContext);
 		pFactoryD3D12->CreateSwapChainD3D12(m_pDevice, m_pImmediateContext, SCDesc, FullScreenModeDesc{}, Window, &m_pSwapChain);
 
@@ -343,7 +344,7 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		auto* GetEngineFactoryVk = LoadGraphicsEngineVk();
 #    endif
 		EngineVkCreateInfo EngineCI;
-
+		EngineCI.EnableValidation = true;
 		const char* const ppIgnoreDebugMessages[] = //
 		{
 			// Validation Performance Warning: [ UNASSIGNED-CoreValidation-Shader-OutputNotConsumed ]
@@ -469,9 +470,6 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 		pSwapchain->Present(0);
 	}
-
-	//m_pImGui->EndFrame();
-
 	
 	app->ShutDown();
 
@@ -495,6 +493,8 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 	exit(EXIT_SUCCESS);
 }
 
+#include <crtdbg.h>
+
 
 
 #define DEFINE_APLLICATION_MAIN(appclass)							\
@@ -502,6 +502,9 @@ extern int WindowGLFWMain(int argc, char** argv, GLFWSample* app);  \
 																	\
 int main(int argc, char** argv)										\
 {																	\
+																	\
+_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);		\
+																	\
   /* code for main function goes here */							\
   appclass app;														\
   return WindowGLFWMain(argc, argv, &app);							\

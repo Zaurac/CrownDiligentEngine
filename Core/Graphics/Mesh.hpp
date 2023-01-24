@@ -1,3 +1,5 @@
+#define _ITERATOR_DEBUG_LEVEL 0
+
 #pragma once
 #if D3D11_SUPPORTED
 #    include "../../../Graphics/GraphicsEngineD3D11/interface/EngineFactoryD3D11.h"
@@ -43,6 +45,8 @@ public:
 
 	std::vector<Vertex> m_vertices;
 	std::vector<uint32_t> m_indices;
+	BoundBox m_boundingBox;
+	std::string m_name;
 
 	RefCntAutoPtr<ITextureView> m_diffuseTextureView;
 	RefCntAutoPtr<ITextureView> m_alphaTextureView;

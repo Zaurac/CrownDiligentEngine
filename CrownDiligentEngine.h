@@ -66,5 +66,6 @@ using namespace Diligent;
 		
 		float3 m_CameraPos;
 		float    m_fMoveSpeed = 500.f;
+		float    m_fRotateSpeed = 0.001f;
 		float    m_fCurrentSpeed = 0.f;
 	};

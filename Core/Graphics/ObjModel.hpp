@@ -49,6 +49,7 @@ private:
 	std::vector<uint32_t> indices;
 	
 	CameraAttribs m_CameraAttribs;
+	std::string pathModel;
 
 public:
 	ObjModel(ISwapChain* pSwapChain, IRenderDevice* pRenderDevice, IEngineFactory* pEngineFactory, IDeviceContext* pDeviceContext);

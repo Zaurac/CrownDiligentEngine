@@ -110,7 +110,7 @@ void ObjModel::CreatePipeline()
 	PSOShadowCreateInfo.GraphicsPipeline.RTVFormats[0]	  = TEX_FORMAT_UNKNOWN;
 	PSOShadowCreateInfo.GraphicsPipeline.DSVFormat		  = m_ShadowSettings.Format;
 	PSOShadowCreateInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
+	PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
 	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS_EQUAL;
 	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
 	PSOShadowCreateInfo.pVS = m_ShadowVS;
@@ -232,9 +232,10 @@ void ObjModel::loadObjFile(const std::string& path)
 	std::string warning;
 	std::string error;
 
-	
+	pathModel = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/";
 
-	 bool ret = tinyobj::LoadObj(&attributes, &shapes, &materials, &warning, &error, path.c_str(), "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/");
+
+	 bool ret = tinyobj::LoadObj(&attributes, &shapes, &materials, &warning, &error, path.c_str(), pathModel.c_str());
 	
 	if (!warning.empty()) {
 		std::cout << "WARN: " << warning << std::endl;
@@ -260,9 +261,17 @@ void ObjModel::loadObjFile(const std::string& path)
 	}*/
 
 
+	//DEFAULT DIFFUSE TEXTURE
+	RefCntAutoPtr<ITextureView> m_DefaultDiffuseTexture;
+	TextureLoadInfo loadInfo;
+	loadInfo.IsSRGB = true;
+	loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_UNKNOWN;
+	RefCntAutoPtr<ITexture> TexDiffuse;
+	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/default.jpg", loadInfo, m_pDevice, &TexDiffuse);
+	m_DefaultDiffuseTexture = TexDiffuse->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+
 	//DEFAULT ALPHA TEXTURE
 	RefCntAutoPtr<ITextureView> m_DefaultAlphaTexture;
-	TextureLoadInfo loadInfo;
 	loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
 	RefCntAutoPtr<ITexture> TexAlpha;
 	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pDevice, &TexAlpha);
@@ -273,6 +282,8 @@ void ObjModel::loadObjFile(const std::string& path)
 	for (auto i = 0; i < shapes.size(); i++)
 	{
 		Mesh meshe;
+		meshe.m_name = shapes[i].name;
+		float3 boundMin, boundMax;
 		std::unordered_map<float3, uint32_t> uniqueVertices;
 		for (const auto index : shapes[i].mesh.indices)
 		{
@@ -302,7 +313,8 @@ void ObjModel::loadObjFile(const std::string& path)
 				uv.y = 1.0f - attributes.texcoords[2 * index.texcoord_index + 1];
 			}
 
-			
+			boundMin = std::min(boundMin, position);
+			boundMax = std::max(boundMax, position);
 
 			if (uniqueVertices.count(position) == 0)
 			{
@@ -310,9 +322,8 @@ void ObjModel::loadObjFile(const std::string& path)
 				meshe.m_vertices.push_back(Mesh::Vertex{ position, normal, uv  });
 			}
 
-			meshe.m_indices.push_back(uniqueVertices[position]);
-
 			
+			meshe.m_indices.push_back(uniqueVertices[position]);
 		}
 
 		//TEXTURING
@@ -331,9 +342,9 @@ void ObjModel::loadObjFile(const std::string& path)
 				else
 				{
 					TextureLoadInfo loadInfo;
-					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
+					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_UNKNOWN;
 					RefCntAutoPtr<ITexture> Tex;
-					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->alpha_texname;
+					std::string test = pathModel + mp->alpha_texname;
 					CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
 					m_textureArray[mp->alpha_texname.c_str()] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
 					meshe.m_alphaTextureView = m_textureArray[mp->alpha_texname.c_str()];
@@ -356,17 +367,25 @@ void ObjModel::loadObjFile(const std::string& path)
 				{
 					TextureLoadInfo loadInfo;
 					loadInfo.IsSRGB = true;
-					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_RGBA8_UNORM;
+					loadInfo.Format = TEXTURE_FORMAT::TEX_FORMAT_UNKNOWN;
 					RefCntAutoPtr<ITexture> Tex;
-					std::string test = "F:/CustomEngine/CrownDiligentEngine/assets/Model/Sponza/" + mp->diffuse_texname;
+					std::string test = pathModel + mp->diffuse_texname;
 					CreateTextureFromFile(test.c_str(), loadInfo, m_pDevice, &Tex);
 					m_textureArray[mp->diffuse_texname.c_str()] = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
 					meshe.m_diffuseTextureView = m_textureArray[mp->diffuse_texname.c_str()];
 				}
 				
 			}
+			else
+			{
+				meshe.m_diffuseTextureView = m_DefaultDiffuseTexture;
+			}
 		}
 		
+		meshe.m_boundingBox.Max = boundMax;
+		meshe.m_boundingBox.Min = boundMin;
+		//DEBUG BOUNDING BOX CONSOLE
+		//std::cout << "[Mesh Name] : "  << meshe.m_name << " BoundMin : " << boundMin << " BoundMax: " << boundMax << std::endl;
 		m_meshes.push_back(meshe);
 		uniqueVertices.clear();
 	}

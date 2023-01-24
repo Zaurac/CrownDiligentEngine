@@ -39,7 +39,7 @@
 namespace Diligent
 {
 
-#include "F:/CustomEngine/CrownDiligentEngine/assets/BasicStructures.fxh"
+#include "../../../Shaders/Common/public/BasicStructures.fxh"
 
 class ShadowMapManager
 {
@@ -131,7 +131,6 @@ public:
 private:
     void InitializeConversionTechniques(TEXTURE_FORMAT FilterableShadowMapFmt);
     void InitializeResourceBindings();
-    
 
     int                                      m_ShadowMode = 0;
     RefCntAutoPtr<IRenderDevice>             m_pDevice;

@@ -15,7 +15,7 @@ void CrownDiligentEngine::Initialize()
 	m_ShadowMapMgr = std::make_unique<ShadowMapManager>();
 	m_model = new ObjModel(m_pSwapChain, m_pDevice, m_pEngineFactory, m_pImmediateContext);
 
-	m_LigthAttribs.ShadowAttribs.iNumCascades = 4;
+	m_LigthAttribs.ShadowAttribs.iNumCascades = 3;
 	m_LigthAttribs.ShadowAttribs.fFixedDepthBias = 0.0025f;
 	m_LigthAttribs.ShadowAttribs.iFixedFilterSize = 5;
 	m_LigthAttribs.ShadowAttribs.fFilterWorldSize = 0.1f;
@@ -34,8 +34,6 @@ void CrownDiligentEngine::Initialize()
 		m_model->m_meshes[i].AssignShadowManager(*m_ShadowMapMgr);
 	}
 	m_model->CreatePipeline();
-
-
 
 	m_CameraPos = float3(0, 0, 5);
 
@@ -78,7 +76,7 @@ void CrownDiligentEngine::Update(double CurrTime, double ElapsedTime)
 
 void CrownDiligentEngine::Render()
 {
-	//RenderShadowMap();
+	RenderShadowMap();
 	
 	// Reset default framebuffer
 	auto* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
@@ -200,12 +198,12 @@ void CrownDiligentEngine::UpdateCamera(float ElapsedTime)
 
 	m_fCurrentSpeed = length(MoveDirection);
 
-	float3 PosDelta = MoveDirection * ElapsedTime;
+	float3 PosDelta = MoveDirection;
 
 	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
 	{
-		yaw += (float)(mouseX - lastMouseX) * 0.1f * ElapsedTime;
-		pitch += (float)(mouseY - lastMouseY) * 0.1f * ElapsedTime;
+		yaw += (float)(mouseX - lastMouseX) * m_fRotateSpeed;
+		pitch += (float)(mouseY - lastMouseY) * m_fRotateSpeed;
 		glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 	else
@@ -225,7 +223,7 @@ void CrownDiligentEngine::UpdateCamera(float ElapsedTime)
 		ReferenceRotation;
 	float4x4 WorldRotation = CameraRotation.Transpose();
 
-	float3 PosDeltaWorld = PosDelta * WorldRotation;
+	float3 PosDeltaWorld = PosDelta * WorldRotation * ElapsedTime;
 	m_CameraPos += PosDeltaWorld;
 
 	m_camera.viewMatrix = float4x4::Translation(-m_CameraPos) * CameraRotation;
