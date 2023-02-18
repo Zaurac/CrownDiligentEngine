@@ -129,6 +129,7 @@ struct CameraAttribs
     float4x4 mViewInvT;
     float4x4 mProjInvT;
     float4x4 mViewProjInvT;
+    float4x4 mWordlViewProjT;
 #else
     matrix mView;
     matrix mProj;
@@ -136,6 +137,7 @@ struct CameraAttribs
     matrix mViewInv;
     matrix mProjInv;
     matrix mViewProjInv;
+    matrix mWordlViewProj;
 #endif
 
     float4 f4ExtraData[5]; // Any appliation-specific data

@@ -302,11 +302,12 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 		// Load the dll and import GetEngineFactoryD3D12() function
 		auto* GetEngineFactoryD3D12 = LoadGraphicsEngineD3D12();
 #    endif
-		auto* pFactoryD3D12 = GetEngineFactoryD3D12();
-		m_pEngineFactory = pFactoryD3D12;
-
 		EngineD3D12CreateInfo EngineCI;
 		EngineCI.EnableValidation = true;
+
+		auto* pFactoryD3D12 = GetEngineFactoryD3D12();
+		m_pEngineFactory = pFactoryD3D12;
+		
 		pFactoryD3D12->CreateDeviceAndContextsD3D12(EngineCI, &m_pDevice, &m_pImmediateContext);
 		pFactoryD3D12->CreateSwapChainD3D12(m_pDevice, m_pImmediateContext, SCDesc, FullScreenModeDesc{}, Window, &m_pSwapChain);
 
@@ -356,7 +357,6 @@ int WindowGLFWMain(int argc, char** argv, GLFWSample* app)
 
 		auto* pFactoryVk = GetEngineFactoryVk();
 		m_pEngineFactory = pFactoryVk;
-
 		
 		pFactoryVk->CreateDeviceAndContextsVk(EngineCI, &m_pDevice, &m_pImmediateContext);
 		pFactoryVk->CreateSwapChainVk(m_pDevice, m_pImmediateContext, SCDesc, Window, &m_pSwapChain);

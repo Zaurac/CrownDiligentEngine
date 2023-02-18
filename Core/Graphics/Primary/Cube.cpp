@@ -23,7 +23,7 @@ void Cube::Draw()
 	}
 
 	Uint64 offset[] = {0,0};
-	IBuffer* pBuffs[] = { m_CubeVertexBuffer, m_CubeInstanceBuffer };
+	IBuffer* pBuffs[] = { m_CubeVertexBuffer };
 	m_pDeviceContext->SetVertexBuffers(0, _countof(pBuffs), pBuffs, offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
 	m_pDeviceContext->SetIndexBuffer(m_CubeIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 	
@@ -44,16 +44,6 @@ void Cube::Draw()
 
 void Cube::ShutDown()
 {
-	/*m_pPSO->Release();
-	m_pSRB->Release();
-	m_VSConstants->Release();
-	m_CubeVertexBuffer->Release();
-	m_CubeIndexBuffer->Release();*/
-
-	/*m_pEngineFactory->Release();
-	m_pDevice->Release();
-	m_pSwapChain->Release();
-	m_pDeviceContext->Release();*/
 }
 
 Cube::~Cube()
@@ -146,30 +136,6 @@ void Cube::CreatePipeline()
 	IBData.DataSize = m_indices.size() * sizeof(float);
 	m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &m_CubeIndexBuffer);
 
-
-	//INSTANCE BUFFER
-	BufferDesc InstBuffDesc;
-	InstBuffDesc.Name = "Instance Buffer CUBE";
-	InstBuffDesc.Usage = USAGE_DEFAULT;
-	InstBuffDesc.BindFlags = BIND_VERTEX_BUFFER;
-	InstBuffDesc.Size = sizeof(InstanceData) * nbrInstances;
-	m_pDevice->CreateBuffer(InstBuffDesc, nullptr, &m_CubeInstanceBuffer);
-
-	std::mt19937 gen; // Standard mersenne_twister_engine. Use default seed
-					// to generate consistent distribution.
-	std::uniform_int_distribution<Int32>  tex_distr(0, numTextures - 1);
-	std::vector<InstanceData> InstanceData(nbrInstances);
-	float offsetX = 0;
-	int   instId = 0;
-	for (auto j = 0 ; j < InstanceData.size(); j++)
-	{
-		InstanceData[j].Matrix = float4x4::Translation(offsetX, 0, 5);
-		offsetX += 2.1;
-		InstanceData[j].TextureInd = static_cast<float>(tex_distr(gen));
-	}
-	Uint32 DataSize = static_cast<Uint32>(sizeof(InstanceData[0]) * InstanceData.size());
-	m_pDeviceContext->UpdateBuffer(m_CubeInstanceBuffer, 0, DataSize, InstanceData.data(), RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-
 	GraphicsPipelineStateCreateInfo PSOCreateInfo;
 
 	ShaderCreateInfo ShaderCI;
@@ -190,7 +156,7 @@ void Cube::CreatePipeline()
 		ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
 		ShaderCI.EntryPoint = "main";
 		ShaderCI.Desc.Name = "Triangle vertex shader";
-		ShaderCI.FilePath = "cube_inst.vsh";
+		ShaderCI.FilePath = "cube.vsh";
 		//ShaderCI.Source = VSSource;
 		m_pDevice->CreateShader(ShaderCI, &pVS);
 	}
@@ -202,7 +168,7 @@ void Cube::CreatePipeline()
 		ShaderCI.EntryPoint = "main";
 		ShaderCI.Desc.Name = "Triangle pixel shader";
 		//ShaderCI.Source = PSSource;
-		ShaderCI.FilePath = "cube_inst.psh";
+		ShaderCI.FilePath = "cube.psh";
 		m_pDevice->CreateShader(ShaderCI, &pPS);
 
 		//UNIFORM BUFFER
@@ -218,9 +184,6 @@ void Cube::CreatePipeline()
 	// Finally, create the pipeline state
 	PSOCreateInfo.pVS = pVS;
 	PSOCreateInfo.pPS = pPS;
-
-	
-
 	// Pipeline state name is used by the engine to report issues.
 	// It is always a good idea to give objects descriptive names.
 	PSOCreateInfo.PSODesc.Name = "Cube PSO";
@@ -237,8 +200,6 @@ void Cube::CreatePipeline()
 	PSOCreateInfo.GraphicsPipeline.DSVFormat = m_pSwapChain->GetDesc().DepthBufferFormat;
 	// Primitive topology defines what kind of primitives will be rendered by this pipeline state
 	PSOCreateInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	// No back face culling for this tutorial
-	PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_NONE;
 	// Disable depth testing
 	PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
 	// clang-format on
@@ -251,20 +212,6 @@ void Cube::CreatePipeline()
 		LayoutElement{0,0,3, VT_FLOAT32, false},
 		//UV
 		LayoutElement{1,0,2, VT_FLOAT32, false},
-
-		// Per-instance data - second buffer slot
-		// We will use four attributes to encode instance-specific 4x4 transformation matrix
-		// Attribute 2 - first row
-		LayoutElement{2, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
-		// Attribute 3 - second row
-		LayoutElement{3, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
-		// Attribute 4 - third row
-		LayoutElement{4, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
-		// Attribute 5 - fourth row
-		LayoutElement{5, 1, 4, VT_FLOAT32, False, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE},
-
-		// Attribute 6 - texture array index
-		 LayoutElement{6, 1, 1, VT_FLOAT32, False, LAYOUT_ELEMENT_AUTO_OFFSET, LAYOUT_ELEMENT_AUTO_STRIDE, INPUT_ELEMENT_FREQUENCY_PER_INSTANCE}
 	};
 	PSOCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
 	PSOCreateInfo.GraphicsPipeline.InputLayout.NumElements = _countof(LayoutElems);
@@ -273,7 +220,7 @@ void Cube::CreatePipeline()
 
 	ShaderResourceVariableDesc Vars[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture",SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
+		{SHADER_TYPE_PIXEL, "g_DiffTexture",SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.Variables = Vars;
@@ -288,15 +235,11 @@ void Cube::CreatePipeline()
 
 	ImmutableSamplerDesc ImtblSamplers[] =
 	{
-		{SHADER_TYPE_PIXEL, "g_Texture", SamLinearDesc}
+		{SHADER_TYPE_PIXEL, "g_DiffTexture", SamLinearDesc}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
-
-	
-
-
 	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pPSO);
 
 	m_pPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "Constants")->Set(m_VSConstants);
@@ -307,50 +250,13 @@ void Cube::CreatePipeline()
 
 void Cube::LoadTexture()
 {
-	/*TextureLoadInfo loadInfo;
+	//DIFFUSE TEXTURE
+	RefCntAutoPtr<ITexture> pTexDiffuse;
+	TextureLoadInfo loadInfo;
 	loadInfo.IsSRGB = true;
-	RefCntAutoPtr<ITexture> Tex;
-	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/DGLogo.png", loadInfo, m_pDevice, &Tex);
-	m_TextureSRV = Tex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-	m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_TextureSRV);*/
-
-	RefCntAutoPtr<ITexture> pTexArray;
-	for (int tex = 0; tex < numTextures; tex++)
-	{
-		// Load current texture
-		std::stringstream FileNameSS;
-		FileNameSS << "F:/CustomEngine/CrownDiligentEngine/assets/DGLogo" << tex << ".png";
-		const auto FileName = FileNameSS.str();
-		RefCntAutoPtr<ITexture> SrcTex;
-		TextureLoadInfo loadInfo;
-		loadInfo.IsSRGB = true;
-		CreateTextureFromFile(FileName.c_str(), loadInfo, m_pDevice, &SrcTex);
-		const auto& TexDesc = SrcTex->GetDesc();
-		if (pTexArray == nullptr)
-		{
-			//	Create texture array
-			auto TexArrDesc = TexDesc;
-			TexArrDesc.ArraySize = numTextures;
-			TexArrDesc.Type = RESOURCE_DIM_TEX_2D_ARRAY;
-			TexArrDesc.Usage = USAGE_DEFAULT;
-			TexArrDesc.BindFlags = BIND_SHADER_RESOURCE;
-			m_pDevice->CreateTexture(TexArrDesc, nullptr, &pTexArray);
-		}
-
-		// Copy current texture into the texture array
-		for (Uint32 mip = 0; mip < TexDesc.MipLevels; ++mip)
-		{
-			CopyTextureAttribs CopyAttribs(SrcTex, RESOURCE_STATE_TRANSITION_MODE_TRANSITION,
-				pTexArray, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-
-			CopyAttribs.SrcMipLevel = mip;
-			CopyAttribs.DstMipLevel = mip;
-			CopyAttribs.DstSlice = tex;
-			m_pDeviceContext->CopyTexture(CopyAttribs);
-		}
-	}
-	m_TextureSRV = pTexArray->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-	m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_TextureSRV);
+	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/pbr/damaged_diffuse.jpg", loadInfo, m_pDevice, &pTexDiffuse);
+	m_TextureSRV = pTexDiffuse->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+	m_pSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_DiffTexture")->Set(m_TextureSRV);
 }
 
 

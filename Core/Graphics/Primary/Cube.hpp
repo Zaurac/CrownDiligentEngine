@@ -37,11 +37,6 @@ private:
 		float3 pos;
 		float2 UV;
 	};
-	struct InstanceData
-	{
-		float4x4 Matrix;
-		float    TextureInd = 0;
-	};
 
 	RefCntAutoPtr<IPipelineState> m_pPSO;
 	RefCntAutoPtr<IShaderResourceBinding> m_pSRB;
@@ -49,7 +44,6 @@ private:
 	RefCntAutoPtr<IBuffer> m_VSConstants;
 	RefCntAutoPtr<IBuffer> m_CubeVertexBuffer;
 	RefCntAutoPtr<IBuffer>  m_CubeIndexBuffer;
-	RefCntAutoPtr<IBuffer> m_CubeInstanceBuffer;
 
 	RefCntAutoPtr<IEngineFactory> m_pEngineFactory;
 	RefCntAutoPtr<IRenderDevice> m_pDevice;
@@ -61,7 +55,7 @@ private:
 
 	float4x4 m_ModelMatrix;
 
-	int nbrInstances = 200;
+	int nbrInstances = 10;
 	int numTextures = 3;
 
 public:

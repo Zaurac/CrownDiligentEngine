@@ -135,7 +135,6 @@ newmtl floor
 	Ke 0.0000 0.0000 0.0000
 	map_Ka textures\sponza_floor_a_diff.dds
 	map_Kd textures\sponza_floor_a_diff.dds
-	map_Ks textures\floor_gloss.dds
 
 newmtl column_c
 	Ns 10.0000

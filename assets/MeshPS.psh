@@ -1,4 +1,6 @@
 #include "BasicStructures.fxh"
+#include "GLTF_PBR_Shading.fxh"
+#include "ToneMapping.fxh"
 #include "Shadows.fxh"
 
 Texture2D    g_tex2DDiffuse;
@@ -25,6 +27,7 @@ struct VSOutput
     float3 PosInLightViewSpace 	: LIGHT_SPACE_POS;
     float3 NormalWS 	        : NORMALWS;
     float2 TexCoord 	        : TEXCOORD;
+    float3 ViewPos              : VIEWPOS;
 };
 
 float4 MeshPS(VSOutput VSOut) : SV_TARGET
@@ -32,13 +35,16 @@ float4 MeshPS(VSOutput VSOut) : SV_TARGET
     // Normalize after interpolation
     float3 normalWS = normalize(VSOut.NormalWS);
 
-    float3 diffuseAlbedo = g_tex2DDiffuse.Sample(g_tex2DDiffuse_sampler, VSOut.TexCoord).rgb;
+    float4 diffuseAlbedo = g_tex2DDiffuse.Sample(g_tex2DDiffuse_sampler, VSOut.TexCoord);
+    
     float3 textureAlpha  = g_tex2DAlpha.Sample(g_tex2DDiffuse_sampler, VSOut.TexCoord).rgb;
 
     float nDotL = saturate(dot(normalWS, -g_LightAttribs.f4Direction.xyz));
-
+    
+    //Calculate Shadow Map Cascade
     FilteredShadow Shadow;
     float CameraSpaceZ = VSOut.PositionPS.w;
+    
 #   if SHADOW_MODE == SHADOW_MODE_PCF
         Shadow = FilterShadowMap(g_LightAttribs.ShadowAttribs, g_tex2DShadowMap, g_tex2DShadowMap_sampler,
                                  VSOut.PosInLightViewSpace, ddx(VSOut.PosInLightViewSpace), ddy(VSOut.PosInLightViewSpace),
@@ -49,17 +55,19 @@ float4 MeshPS(VSOutput VSOut) : SV_TARGET
                                            CameraSpaceZ);
 #   endif
 
-    float3 Color = (nDotL * g_LightAttribs.f4Intensity.xyz * Shadow.fLightAmount + g_LightAttribs.f4AmbientLight.xyz);
+    //float3 Color = (nDotL * g_LightAttribs.f4Intensity.xyz * Shadow.fLightAmount + g_LightAttribs.f4AmbientLight.xyz);
+    // Add diffuse and specular contributions
+    float3 Color = (nDotL * g_LightAttribs.f4Intensity.xyz * Shadow.fLightAmount + g_LightAttribs.f4AmbientLight.xyz) * diffuseAlbedo;
     
     if (textureAlpha.r > 0.5)
     {
         Color = (nDotL * g_LightAttribs.f4Intensity.xyz * Shadow.fLightAmount + g_LightAttribs.f4AmbientLight.xyz) * diffuseAlbedo;
+        
     }
     else
     {
         discard;
     }
-	
 
     if (g_LightAttribs.ShadowAttribs.bVisualizeShadowing)
     {
@@ -69,6 +77,6 @@ float4 MeshPS(VSOutput VSOut) : SV_TARGET
     {
         Color = lerp(Color, GetCascadeColor(Shadow), 0.1);
     }
-
+    
     return float4(Color, 1.0);
 }

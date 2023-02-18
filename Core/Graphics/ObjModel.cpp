@@ -72,7 +72,8 @@ void ObjModel::CreatePipeline()
 	{
 		{SHADER_TYPE_PIXEL, "g_tex2DDiffuse", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC},
 		{SHADER_TYPE_PIXEL, m_ShadowSettings.iShadowMode == SHADOW_MODE_PCF ? "g_tex2DShadowMap" : "g_tex2DFilterableShadowMap", SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE},
-		{SHADER_TYPE_PIXEL, "g_tex2DAlpha", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
+		{SHADER_TYPE_PIXEL, "g_tex2DAlpha", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC},
+		{SHADER_TYPE_PIXEL, "g_Tex2DSpecular", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.Variables = Vars;
@@ -86,16 +87,12 @@ void ObjModel::CreatePipeline()
 	ImmutableSamplerDesc ImtblSamplers[] =
 	{
 		{SHADER_TYPE_PIXEL, "g_tex2DDiffuse", SamLinearDesc},
-		//{SHADER_TYPE_PIXEL, "g_AlphaTexture", SamLinearDesc}
 	};
 
 	PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers = ImtblSamplers;
 	PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImtblSamplers);
 
-	if (m_pDevice->GetDeviceInfo().Features.DepthClamp)
-	{
-		PSOCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = true;
-	}
+	PSOCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = true;
 
 	m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pBasicPSO);
 	m_pBasicPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "cbCameraAttribs")->Set(m_UBCamera);
@@ -111,17 +108,15 @@ void ObjModel::CreatePipeline()
 	PSOShadowCreateInfo.GraphicsPipeline.DSVFormat		  = m_ShadowSettings.Format;
 	PSOShadowCreateInfo.GraphicsPipeline.PrimitiveTopology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode = CULL_MODE_BACK;
+	PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = false;
 	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthFunc = COMPARISON_FUNC_LESS_EQUAL;
 	PSOShadowCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
+	
 	PSOShadowCreateInfo.pVS = m_ShadowVS;
 	PSOShadowCreateInfo.pPS = nullptr;
 	PSOShadowCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
 	PSOShadowCreateInfo.GraphicsPipeline.InputLayout.NumElements = _countof(LayoutElems);
 	PSOShadowCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
-	if (m_pDevice->GetDeviceInfo().Features.DepthClamp)
-	{
-		PSOShadowCreateInfo.GraphicsPipeline.RasterizerDesc.DepthClipEnable = false;
-	}
 	m_pDevice->CreatePipelineState(PSOShadowCreateInfo, &m_ShadowPSO);
 	m_ShadowPSO->GetStaticVariableByName(SHADER_TYPE_VERTEX, "cbCameraAttribs")->Set(m_UBCamera);
 
@@ -277,6 +272,7 @@ void ObjModel::loadObjFile(const std::string& path)
 	CreateTextureFromFile("F:/CustomEngine/CrownDiligentEngine/assets/alpha.png", loadInfo, m_pDevice, &TexAlpha);
 	m_DefaultAlphaTexture = TexAlpha->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
 	
+	
 	std::unordered_map<const char*, RefCntAutoPtr<ITextureView>> m_textureArray;
 	
 	for (auto i = 0; i < shapes.size(); i++)
@@ -294,6 +290,7 @@ void ObjModel::loadObjFile(const std::string& path)
 			position.y = attributes.vertices[3 * index.vertex_index + 1];
 			position.z = attributes.vertices[3 * index.vertex_index + 2];
 
+			
 
 			float3 normal;
 			normal.x = attributes.normals[3 * index.normal_index];

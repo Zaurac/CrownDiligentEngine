@@ -1,7 +1,10 @@
 #include "GLFWSample.h"
 #include "DiligentCore/Common/interface/AdvancedMath.hpp"
 #include "DiligentCore/Common/interface/BasicMath.hpp"
-#include "Core/Graphics/Primary/Cube.hpp"
+#include "Core/Graphics/Primary/CubeInstance.hpp"
+#include "DiligentCore/Graphics/GraphicsTools/interface/CommonlyUsedStates.h"
+#include "DiligentCore/Graphics/GraphicsTools/interface/GraphicsUtilities.h"
+#include "Core/Graphics/Primary/Sphere.hpp"
 #include "Core/Graphics/ObjModel.hpp"
 using namespace Diligent;
 
@@ -16,7 +19,9 @@ using namespace Diligent;
 
 
 		void Update(double CurrTime, double ElapsedTime) override;
-
+		//CUBEMAP BRDF
+		void PrecomputeCubemaps();
+		void PrecomputeBRDF();
 
 		void Render() override;
 		void CreateShadowMap();
@@ -32,9 +37,36 @@ using namespace Diligent;
 
 		void WindowResize(Uint32 Width, Uint32 Height) override;
 
+		RefCntAutoPtr<ITextureView> m_TextureSphere;
+		RefCntAutoPtr<ITextureView> m_TextureNormSphere;
+		RefCntAutoPtr<ITextureView> m_TexturePhysicalSphere;
+		RefCntAutoPtr<ITextureView> m_TextureMetalSphere;
+
+		//CUBEMAP
+		RefCntAutoPtr<IShaderResourceBinding> m_pPrecomputeIrradianceCubeSRB;
+		RefCntAutoPtr<IShaderResourceBinding> m_pPrefilterEnvMapSRB;
+		RefCntAutoPtr<ITextureView> pEnvironmentMap;
+		RefCntAutoPtr<ITextureView> m_pIrradianceCubeSRV;
+		RefCntAutoPtr<ITextureView> m_pPrefilteredEnvMapSRV;
+		RefCntAutoPtr<IPipelineState> m_pPrefilterEnvMapPSO;
+		RefCntAutoPtr<IPipelineState> m_pPrecomputeIrradianceCubePSO;
+		RefCntAutoPtr<IBuffer> m_PrecomputeEnvMapAttribsCB;
+
+		//BRDF
+		RefCntAutoPtr<ITextureView> m_pBRDF_LUT_SRV;
+
 	private:
-		Cube * m_pCube = NULL;
+		CubeInstanced * m_pCubeInstanced = NULL;
+		//Sphere*m_pCube = NULL;
+
+		std::vector<Sphere*> m_spheres;
+		std::vector<std::string> materialNames;
+		std::vector<float3> m_spheresPos;
+		int32_t materialIndex = 8;
+		int GRID_SIZE = 7;
+
 		ObjModel *m_model = NULL;
+		float4x4 cubeModelMatrix;
 
 		//SHADOW
 		CameraAttribs m_camAttribs;
